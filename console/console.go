@@ -26,7 +26,6 @@ var (
 	input [consoleBufLen]byte
 
 	console  = machine.Serial
-	readyLED = machine.LED
 
 	flashdev tinyfs.BlockDevice
 	fs       tinyfs.Filesystem
@@ -65,10 +64,6 @@ func RunFor(dev tinyfs.BlockDevice, filesys tinyfs.Filesystem) {
 	flashdev = dev
 	fs = filesys
 
-	readyLED.Configure(machine.PinConfig{Mode: machine.PinOutput})
-	readyLED.High()
-
-	readyLED.Low()
 	println("SPI Configured. Reading flash info")
 
 	/*
