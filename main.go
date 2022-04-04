@@ -45,6 +45,10 @@ func main() {
 		SectorSize: 512,
 	})
 
+	filesystem.Mount()
+	fs_type := filesystem.GetFsType()
+	fmt.Printf("Type is %s\r\n", fs_type.String())
+
 	console.RunFor(&sd, filesystem)
 }
 
