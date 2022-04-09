@@ -196,6 +196,10 @@ func (l *FATFS) GetFsType() Type {
 	return Type(l.fs.fs_type)
 }
 
+func (l *FATFS) GetCardSize() int64 {
+	return int64(l.fs.csize) * int64(l.fs.n_fatent) * SectorSize
+}
+
 func (l *FATFS) Mount() error {
 	return errval(C.f_mount(l.fs))
 }

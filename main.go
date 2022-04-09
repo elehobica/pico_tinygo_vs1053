@@ -45,9 +45,17 @@ func main() {
 		SectorSize: 512,
 	})
 
-	filesystem.Mount()
+	err = filesystem.Mount()
+	if err != nil {
+		fmt.Printf("%s\r\n", err.Error())
+		error_blink(led, 2)
+	}
+	fmt.Printf("mount ok\r\n");
+
 	fs_type := filesystem.GetFsType()
 	fmt.Printf("Type is %s\r\n", fs_type.String())
+
+	fmt.Printf("Card size: %7.2f GB (GB = 1E9 bytes)\r\n\r\n", float32(filesystem.GetCardSize()) * 1e-9)
 
 	console.RunFor(&sd, filesystem)
 }
