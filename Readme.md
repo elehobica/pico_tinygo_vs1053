@@ -1,10 +1,14 @@
-# Raspberry Pi Pico TinyGo tinyfs Test
+# Raspberry Pi Pico TinyGo FatFs Test
 ## Overview
-This project is an example of tinyfs on Raspberry Pi Pico by TinyGo.
+This project is an example of FatFs on Raspberry Pi Pico by TinyGo.
+* ported from [elehobica/pico_fatfs_test](https://github.com/elehobica/pico_fatfs_test)
+* confirmed with TinyGo 0.22.0
+
 This project supports:
-* TinyGo 0.22.0
+* FatFs R0.13c ([http://elm-chan.org/fsw/ff/00index_e.html](http://elm-chan.org/fsw/ff/00index_e.html))
 * SD card access by SPI interface
-* FAT16, FAT32 formats
+* SD, SDHC, SDXC cards
+* FAT16, FAT32, exFAT formats
 * write/read speed benchmark
 
 ## Supported Board
@@ -41,7 +45,7 @@ This project supports:
 * Before starting docker, clone repository to your local enviroment (by GitBash etc.)
 ```
 > cd /d/somewhere/share
-> git clone -b main https://github.com/elehobica/pico_tinyfs_test.git
+> git clone -b main https://github.com/elehobica/pico_tinygo_fatfs_test.git
 ```
 
 * Docker
@@ -55,33 +59,33 @@ $ docker run -it -v /mnt/d/somewhere/share:/share tinygo/tinygo:latest /bin/bash
 # cd /share
 
 (copy repository for docker native directory for best performance of WSL2, otherwise stay /share)
-(# cp -r /share/pico_tinyfs_test ~/ && cd ~ )
+(# cp -r /share/pico_tinygo_fatfs_test ~/ && cd ~ )
 
-# cd pico_tinyfs_test
+# cd pico_tinygo_fatfs_test
 ```
 
 * Go Module Configuration
 ```
-# go mod init pico_tinyfs_test
-# cd console && go mod init github.com/elehobica/pico_tinyfs_test/console && cd ..
-# go mod edit -replace github.com/elehobica/pico_tinyfs_test/console=./console
-# cd fatfs && go mod init github.com/elehobica/pico_tinyfs_test/fatfs && cd ..
-# go mod edit -replace github.com/elehobica/pico_tinyfs_test/fatfs=./fatfs
-# cd internal/gopointer && go mod init github.com/elehobica/pico_tinyfs_test/internal/gopointer && cd ../..
-# go mod edit -replace github.com/elehobica/pico_tinyfs_test/internal/gopointer=./internal/gopointer
-# cd internal/util && go mod init github.com/elehobica/pico_tinyfs_test/internal/util && cd ../..
-# go mod edit -replace github.com/elehobica/pico_tinyfs_test/internal/util=./internal/util
+# go mod init pico_tinygo_fatfs_test
+# cd console && go mod init github.com/elehobica/pico_tinygo_fatfs_test/console && cd ..
+# go mod edit -replace github.com/elehobica/pico_tinygo_fatfs_test/console=./console
+# cd fatfs && go mod init github.com/elehobica/pico_tinygo_fatfs_test/fatfs && cd ..
+# go mod edit -replace github.com/elehobica/pico_tinygo_fatfs_test/fatfs=./fatfs
+# cd internal/gopointer && go mod init github.com/elehobica/pico_tinygo_fatfs_test/internal/gopointer && cd ../..
+# go mod edit -replace github.com/elehobica/pico_tinygo_fatfs_test/internal/gopointer=./internal/gopointer
+# cd internal/util && go mod init github.com/elehobica/pico_tinygo_fatfs_test/internal/util && cd ../..
+# go mod edit -replace github.com/elehobica/pico_tinygo_fatfs_test/internal/util=./internal/util
 # go mod tidy
 ```
 
 * TinyGo Build
 ```
-# tinygo build -target=pico -o pico_tinyfs_test.uf2
+# tinygo build -target=pico -o pico_tinygo_fatfs_test.uf2
 
 (copy UF2 back to Windows local if working on docker native directory)
-(# cp pico_tinyfs_test.uf2 /share/pico_tinyfs_test/ )
+(# cp pico_tinygo_fatfs_test.uf2 /share/pico_tinygo_fatfs_test/ )
 ```
 
 * Put UF2 
 
-Then, go back to Windows environment and put "pico_tinyfs_test.uf2" on RPI-RP2 drive
+Then, go back to Windows environment and put "pico_tinygo_fatfs_test.uf2" on RPI-RP2 drive

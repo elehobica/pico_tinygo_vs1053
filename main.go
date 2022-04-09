@@ -6,8 +6,8 @@ import (
 	"time"
 	"os"
 
-	"github.com/elehobica/pico_tinyfs_test/fatfs"
-	"github.com/elehobica/pico_tinyfs_test/console"
+	"github.com/elehobica/pico_tinygo_fatfs_test/fatfs"
+	"github.com/elehobica/pico_tinygo_fatfs_test/console"
 	"tinygo.org/x/drivers/sdcard"
 )
 
@@ -38,9 +38,9 @@ func main() {
 	var buf[(BUF_SIZE + 3) / 4 * 4] uint8
 
 	println(); println()
-	println("======================")
-	println("== pico_tinyfs_test ==")
-	println("======================")
+	println("============================")
+	println("== pico_tinygo_fatfs_test ==")
+	println("============================")
 
 	led := ledPin
 	led.Configure(machine.PinConfig{Mode: machine.PinOutput})
