@@ -63,14 +63,14 @@ $ docker run -it -v /mnt/d/somewhere/share:/share tinygo/tinygo:latest /bin/bash
 * Go Module Configuration
 ```
 # go mod init pico_tinyfs_test
-# cd console && go mod init mylocal.com/console && cd ..
-# go mod edit -replace mylocal.com/console=./console
-# cd fatfs && go mod init mylocal.com/fatfs && cd ..
-# go mod edit -replace mylocal.com/fatfs=./fatfs
-# cd internal/gopointer && go mod init mylocal.com/internal/gopointer && cd ../..
-# go mod edit -replace mylocal.com/internal/gopointer=./internal/gopointer
-# cd internal/util && go mod init mylocal.com/internal/util && cd ../..
-# go mod edit -replace mylocal.com/internal/util=./internal/util
+# cd console && go mod init github.com/elehobica/pico_tinyfs_test/console && cd ..
+# go mod edit -replace github.com/elehobica/pico_tinyfs_test/console=./console
+# cd fatfs && go mod init github.com/elehobica/pico_tinyfs_test/fatfs && cd ..
+# go mod edit -replace github.com/elehobica/pico_tinyfs_test/fatfs=./fatfs
+# cd internal/gopointer && go mod init github.com/elehobica/pico_tinyfs_test/internal/gopointer && cd ../..
+# go mod edit -replace github.com/elehobica/pico_tinyfs_test/internal/gopointer=./internal/gopointer
+# cd internal/util && go mod init github.com/elehobica/pico_tinyfs_test/internal/util && cd ../..
+# go mod edit -replace github.com/elehobica/pico_tinyfs_test/internal/util=./internal/util
 # go mod tidy
 ```
 

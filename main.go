@@ -5,8 +5,8 @@ import (
 	"machine"
 	"time"
 
-	"mylocal.com/fatfs"
-	"mylocal.com/console"
+	"github.com/elehobica/pico_tinyfs_test/fatfs"
+	"github.com/elehobica/pico_tinyfs_test/console"
 	"tinygo.org/x/drivers/sdcard"
 )
 

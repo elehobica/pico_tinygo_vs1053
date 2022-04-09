@@ -12,10 +12,8 @@ import (
 	"unsafe"
 
 	"tinygo.org/x/tinyfs"
-	//"tinygo.org/x/tinyfs/internal/gopointer"
-	"mylocal.com/internal/gopointer"
-	//"tinygo.org/x/tinyfs/internal/util"
-	"mylocal.com/internal/util"
+	"github.com/elehobica/pico_tinyfs_test/internal/gopointer"
+	"github.com/elehobica/pico_tinyfs_test/internal/util"
 )
 
 const (
