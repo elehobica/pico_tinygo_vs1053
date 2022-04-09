@@ -193,7 +193,7 @@ func (l *FATFS) Configure(config *Config) *FATFS {
 }
 
 func (l *FATFS) GetFsType() Type {
-	return Type(C.get_fs_type(l.fs))
+	return Type(l.fs.fs_type)
 }
 
 func (l *FATFS) Mount() error {

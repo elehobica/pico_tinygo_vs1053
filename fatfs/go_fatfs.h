@@ -15,7 +15,6 @@ extern DWORD go_fatfs_get_fattime();
 FATFS* go_fatfs_new_fatfs(void);
 FIL* go_fatfs_new_fil(void);
 FF_DIR* go_fatfs_new_ff_dir(void);
-BYTE get_fs_type (FATFS *fs);
 
 //struct lfs_config* go_lfs_new_lfs_config(void);
 //lfs_dir_t* go_lfs_new_lfs_dir(void);

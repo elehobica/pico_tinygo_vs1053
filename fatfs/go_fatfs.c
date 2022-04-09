@@ -32,10 +32,6 @@ FF_DIR* go_fatfs_new_ff_dir(void) {
     return malloc(sizeof(FF_DIR));
 }
 
-BYTE get_fs_type (FATFS *fs) {
-    return fs->fs_type;
-}
-
 // if ffconf.h has FF_FS_READONLY set, certain functions aren't implemented,
 // which prevents the Go code from linking properly.
 #if FF_FS_READONLY == 1
