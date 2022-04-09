@@ -379,6 +379,13 @@ func (f *File) Read(buf []byte) (n int, err error) {
 	return int(br), nil
 }
 
+// Seek changes the position of the file
+func (f *File) Seek(offset int64) error {
+	var ofs C.FSIZE_t = C.FSIZE_t(offset)
+	errno := C.f_lseek(f.fileptr(), ofs)
+	return errval(errno)
+}
+
 /*
 // Seek changes the position of the file
 func (f *File) Seek(offset int64, whence int) (ret int64, err error) {

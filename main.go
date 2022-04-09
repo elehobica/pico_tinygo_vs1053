@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"machine"
 	"time"
+	"os"
 
 	"github.com/elehobica/pico_tinyfs_test/fatfs"
 	"github.com/elehobica/pico_tinyfs_test/console"
@@ -22,6 +23,20 @@ var (
 )
 
 func main() {
+	// Size of read/write.
+	const BUF_SIZE = 512
+
+	// File size in MB where MB = 1,000,000 bytes.
+	const FILE_SIZE_MB = 5;
+
+	// Write pass count.
+	const WRITE_COUNT = 2;
+
+	// File size in bytes.
+	const FILE_SIZE = 1000000*FILE_SIZE_MB;
+
+	var buf[(BUF_SIZE + 3) / 4 * 4] uint8
+
 	println(); println()
 	println("======================")
 	println("== pico_tinyfs_test ==")
@@ -56,6 +71,48 @@ func main() {
 	fmt.Printf("Type is %s\r\n", fs_type.String())
 
 	fmt.Printf("Card size: %7.2f GB (GB = 1E9 bytes)\r\n\r\n", float32(filesystem.GetCardSize()) * 1e-9)
+
+	f, err := filesystem.OpenFile("bench.dat", os.O_RDWR | os.O_CREATE | os.O_TRUNC)
+	if err != nil {
+		fmt.Printf("open error %s\r\n", err.Error())
+		error_blink(led, 3)
+	}
+	defer f.Close()
+
+	// get *fatfs.File type from tinyfs.File interface (Type Assertion)
+	ff, ok := f.(*fatfs.File)
+	if ok != true {
+		fmt.Printf("conversion to *fatfs.File failed\r\n")
+		error_blink(led, 4)
+	}
+
+	// fill buf with known data
+	if BUF_SIZE > 1 {
+		for i := 0; i < BUF_SIZE - 2; i++ {
+			buf[i] = 'A' + uint8(i % 26)
+		}
+		buf[BUF_SIZE - 2] = '\r'
+	}
+	buf[BUF_SIZE - 1] = '\n'
+
+	fmt.Printf("FILE_SIZE_MB = %d\r\n", FILE_SIZE_MB);
+    fmt.Printf("BUF_SIZE = %d bytes\r\n", BUF_SIZE);
+    fmt.Printf("Starting write test, please wait.\r\n\r\n");
+
+	// do write test
+	//n := FILE_SIZE / BUF_SIZE;
+	fmt.Printf("write speed and latency\r\n");
+	fmt.Printf("speed,max,min,avg\r\n");
+	fmt.Printf("KB/Sec,usec,usec,usec\r\n");
+
+	for nTest := 0; nTest < WRITE_COUNT; nTest++ {
+		err = ff.Seek(0)
+		if err != nil {
+			fmt.Printf("seek error %s\r\n", err.Error())
+			error_blink(led, 5)
+		}
+
+	}
 
 	console.RunFor(&sd, filesystem)
 }
