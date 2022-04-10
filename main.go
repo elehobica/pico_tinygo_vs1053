@@ -216,7 +216,7 @@ func main() {
 		}
 		fmt.Printf("%7.4f, %d, %d, %d\r\n", float32(s)/float32(t), maxLatency, minLatency, totalLatency/n)
 	}
-    fmt.Printf("\r\n")
+	fmt.Printf("\r\n")
 
 	//----------------
 	// do read test

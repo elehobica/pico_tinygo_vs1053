@@ -87,3 +87,61 @@ $ docker run -it -v /mnt/d/somewhere/share:/share tinygo/tinygo:latest /bin/bash
 * Put UF2 
 
 Then, go back to Windows environment and put "pico_tinygo_fatfs_test.uf2" on RPI-RP2 drive
+
+## Benchmark Comparison with C++
+### Sansung microSDHC EVO Plus 32GB (UHS-I U1)
+* Reference [pico_fatfs_test](https://github.com/elehobica/pico_fatfs_test)
+```
+=====================
+== pico_fatfs_test ==
+=====================
+mount ok
+Type is FAT32
+Card size:   32.00 GB (GB = 1E9 bytes)
+
+FILE_SIZE_MB = 5
+BUF_SIZE = 512 bytes
+Starting write test, please wait.
+
+write speed and latency
+speed,max,min,avg
+KB/Sec,usec,usec,usec
+447.7192, 6896, 1007, 1142
+446.4797, 7589, 1024, 1145
+
+Starting read test, please wait.
+
+read speed and latency
+speed,max,min,avg
+KB/Sec,usec,usec,usec
+974.9766, 1050, 403, 524
+974.4066, 1049, 402, 524
+```
+
+* TinyGo (this repository)
+```
+============================
+== pico_tinygo_fatfs_test ==
+============================
+mount ok
+Type is FAT32
+Card size:   32.00 GB (GB = 1E9 bytes)
+
+FILE_SIZE_MB = 5
+BUF_SIZE = 512 bytes
+Starting write test, please wait.
+
+write speed and latency
+speed,max,min,avg
+KB/Sec,usec,usec,usec
+349.1884, 17431, 1042, 1442
+361.0920, 22377, 1062, 1391
+
+Starting read test, please wait.
+
+read speed and latency
+speed,max,min,avg
+KB/Sec,usec,usec,usec
+354.7382, 22428, 1284, 1417
+353.7843, 22470, 1293, 1421
+```
