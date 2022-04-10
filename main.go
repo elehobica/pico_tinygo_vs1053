@@ -23,6 +23,9 @@ var (
 )
 
 func main() {
+	// Set PRE_ALLOCATE true to pre-allocate file clusters.
+	const PRE_ALLOCATE = true;
+
 	// Size of read/write.
 	const BUF_SIZE = 512
 
@@ -111,19 +114,32 @@ func main() {
 			fmt.Printf("seek error %s\r\n", err.Error())
 			error_blink(led, 5)
 		}
-
+		err = ff.Truncate()
+		if err != nil {
+			fmt.Printf("truncate error %s\r\n", err.Error())
+			error_blink(led, 6)
+		}
+		if PRE_ALLOCATE {
+			err = ff.Expand(FILE_SIZE, false)
+			if err != nil {
+				fmt.Printf("preallocate error %s\r\n", err.Error())
+				error_blink(led, 7)
+			}
+		}
 	}
 
 	console.RunFor(&sd, filesystem)
 }
 
 func error_blink(led machine.Pin, count int) {
-	for i := 0; i < count; i++ {
-		led.High()
-		time.Sleep(250 * time.Millisecond)
+	for {
+		for i := 0; i < count; i++ {
+			led.High()
+			time.Sleep(250 * time.Millisecond)
+			led.Low()
+			time.Sleep(250 * time.Millisecond)
+		}
 		led.Low()
-		time.Sleep(250 * time.Millisecond)
+		time.Sleep(500 * time.Millisecond)
 	}
-	led.Low()
-	time.Sleep(500 * time.Millisecond)
 }

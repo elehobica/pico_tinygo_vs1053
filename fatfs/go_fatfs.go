@@ -430,6 +430,12 @@ func (f *File) Sync() error {
 	return errval(C.f_sync(f.fileptr()))
 }
 
+// Truncates the size of the file to the specified size
+//
+func (f *File) Truncate() error {
+	return errval(C.f_truncate(f.fileptr()))
+}
+
 /*
 // Truncates the size of the file to the specified size
 //
@@ -438,6 +444,15 @@ func (f *File) Truncate(size uint32) error {
 	return errval(C.lfs_file_truncate(f.lfs.lfs, &f.fptr, C.lfs_off_t(size)))
 }
 */
+
+//  Allocate a contiguous block to the file
+//
+func (f *File) Expand(size int64, flag bool) error {
+	var fsz C.FSIZE_t = C.FSIZE_t(size)
+	var opt C.BYTE;
+	if flag { opt = 1 } else { opt = 0 }
+	return errval(C.f_expand(f.fileptr(), fsz, opt))
+}
 
 func (f *File) Write(buf []byte) (n int, err error) {
 	if f.IsDir() {
