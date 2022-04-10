@@ -386,6 +386,14 @@ func (f *File) Seek(offset int64) error {
 	return errval(errno)
 }
 
+func (f *File) Tell() (ret int64, err error) {
+	pos := int64(f.fileptr().fptr)
+	if pos < 0 {
+		return -1, errval(C.FRESULT(C.FR_INT_ERR))
+	}
+	return int64(pos), nil
+}
+
 /*
 // Seek changes the position of the file
 func (f *File) Seek(offset int64, whence int) (ret int64, err error) {
