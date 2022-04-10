@@ -44,6 +44,9 @@ func (pin Pin) ErrorBlink(count int) {
 }
 
 func main() {
+	// SPI BaudRate
+	const SPI_BAUDRATE_MHZ = 50
+
 	// Set PRE_ALLOCATE true to pre-allocate file clusters.
 	const PRE_ALLOCATE = true
 
@@ -82,6 +85,9 @@ func main() {
 		fmt.Printf("%s\r\n", err.Error())
 		led.ErrorBlink(1)
 	}
+
+	// Set SPI clock speed (not effective if set before here)
+	spi.SetBaudRate(SPI_BAUDRATE_MHZ * machine.MHz)
 
 	filesystem := fatfs.New(&sd)
 
