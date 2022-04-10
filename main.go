@@ -7,7 +7,6 @@ import (
 	"os"
 
 	"github.com/elehobica/pico_tinygo_fatfs_test/fatfs"
-	"github.com/elehobica/pico_tinygo_fatfs_test/console"
 	"tinygo.org/x/drivers/sdcard"
 )
 
@@ -30,7 +29,7 @@ func (pin Pin) Toggle() {
 	pin.Set(!pin.Get())
 }
 
-func (pin Pin) ErrorBlink(count int) {
+func (pin Pin) ErrorBlinkFor(count int) {
 	for {
 		for i := 0; i < count; i++ {
 			pin.High()
@@ -40,6 +39,15 @@ func (pin Pin) ErrorBlink(count int) {
 		}
 		pin.Low()
 		time.Sleep(500 * time.Millisecond)
+	}
+}
+
+func (pin Pin) OkBlinkFor() {
+	for {
+		pin.High()
+		time.Sleep(1000 * time.Millisecond)
+		pin.Low()
+		time.Sleep(1000 * time.Millisecond)
 	}
 }
 
@@ -83,7 +91,7 @@ func main() {
 	err := sd.Configure()
 	if err != nil {
 		fmt.Printf("%s\r\n", err.Error())
-		led.ErrorBlink(1)
+		led.ErrorBlinkFor(1)
 	}
 
 	// Set SPI clock speed (not effective if set before here)
@@ -99,7 +107,7 @@ func main() {
 	err = filesystem.Mount()
 	if err != nil {
 		fmt.Printf("%s\r\n", err.Error())
-		led.ErrorBlink(2)
+		led.ErrorBlinkFor(2)
 	}
 	fmt.Printf("mount ok\r\n")
 
@@ -111,7 +119,7 @@ func main() {
 	f, err := filesystem.OpenFile("bench.dat", os.O_RDWR | os.O_CREATE | os.O_TRUNC)
 	if err != nil {
 		fmt.Printf("open error %s\r\n", err.Error())
-		led.ErrorBlink(3)
+		led.ErrorBlinkFor(3)
 	}
 	defer f.Close()
 
@@ -119,7 +127,7 @@ func main() {
 	ff, ok := f.(*fatfs.File)
 	if ok != true {
 		fmt.Printf("conversion to *fatfs.File failed\r\n")
-		led.ErrorBlink(4)
+		led.ErrorBlinkFor(4)
 	}
 
 	// fill buf with known data
@@ -132,12 +140,13 @@ func main() {
 	buf = append(buf, '\n')
 
 	fmt.Printf("FILE_SIZE_MB = %d\r\n", FILE_SIZE_MB)
-    fmt.Printf("BUF_SIZE = %d bytes\r\n", BUF_SIZE)
-    fmt.Printf("Starting write test, please wait.\r\n\r\n")
+	fmt.Printf("BUF_SIZE = %d bytes\r\n", BUF_SIZE)
+	n := int64(FILE_SIZE / BUF_SIZE)
 
 	//----------------
 	// do write test
 	//----------------
+	fmt.Printf("Starting write test, please wait.\r\n\r\n")
 	fmt.Printf("write speed and latency\r\n")
 	fmt.Printf("speed,max,min,avg\r\n")
 	fmt.Printf("KB/Sec,usec,usec,usec\r\n")
@@ -146,51 +155,50 @@ func main() {
 		err = ff.Seek(0)
 		if err != nil {
 			fmt.Printf("seek error %s\r\n", err.Error())
-			led.ErrorBlink(5)
+			led.ErrorBlinkFor(5)
 		}
 		err = ff.Truncate()
 		if err != nil {
 			fmt.Printf("truncate error %s\r\n", err.Error())
-			led.ErrorBlink(6)
+			led.ErrorBlinkFor(6)
 		}
 		if PRE_ALLOCATE {
 			err = ff.Expand(FILE_SIZE, false)
 			if err != nil {
 				fmt.Printf("preallocate error %s\r\n", err.Error())
-				led.ErrorBlink(7)
+				led.ErrorBlinkFor(7)
 			}
 		}
 		maxLatency := int64(0)
-        minLatency := int64(9999999)
-        totalLatency := int64(0)
-        skipLatency := SKIP_FIRST_LATENCY
-		n := int64(FILE_SIZE / BUF_SIZE)
+		minLatency := int64(9999999)
+		totalLatency := int64(0)
+		skipLatency := SKIP_FIRST_LATENCY
 		t := time.Since(start).Milliseconds()
 		for i := int64(0); i < n; i++ {
 			m := time.Since(start).Microseconds()
 			bw, err := ff.Write(buf)
 			if err != nil || bw != BUF_SIZE {
 				fmt.Printf("write failed %s %d\r\n", err.Error(), bw)
-				led.ErrorBlink(8)
+				led.ErrorBlinkFor(8)
 			}
 			m = time.Since(start).Microseconds() - m
 			totalLatency += m
 			if skipLatency {
-                // Wait until first write to SD, not just a copy to the cache.
+				// Wait until first write to SD, not just a copy to the cache.
 				pos, err := ff.Tell()
 				if err != nil {
 					fmt.Printf("tell error %s\r\n", err.Error())
-					led.ErrorBlink(9)
+					led.ErrorBlinkFor(9)
 				}
-                skipLatency = pos < 512
-            } else {
-                if maxLatency < m {
-                    maxLatency = m
-                }
-                if minLatency > m {
-                    minLatency = m
-                }
-            }
+				skipLatency = pos < 512
+			} else {
+				if maxLatency < m {
+					maxLatency = m
+				}
+				if minLatency > m {
+					minLatency = m
+				}
+			}
 			if i % 10 == 0 {
 				led.Toggle()
 			}
@@ -198,16 +206,74 @@ func main() {
 		err = ff.Sync()
 		if err != nil {
 			fmt.Printf("sync failed %s\r\n", err.Error())
-			led.ErrorBlink(10)
+			led.ErrorBlinkFor(10)
 		}
 		t = time.Since(start).Milliseconds() - t
 		s, err := ff.Size()
 		if err != nil {
 			fmt.Printf("size error %s\r\n", err.Error())
-			led.ErrorBlink(11)
+			led.ErrorBlinkFor(11)
 		}
 		fmt.Printf("%7.4f, %d, %d, %d\r\n", float32(s)/float32(t), maxLatency, minLatency, totalLatency/n)
 	}
+    fmt.Printf("\r\n")
 
-	console.RunFor(&sd, filesystem)
+	//----------------
+	// do read test
+	//----------------
+	fmt.Printf("Starting read test, please wait.\r\n\r\n")
+	fmt.Printf("read speed and latency\r\n")
+	fmt.Printf("speed,max,min,avg\r\n")
+	fmt.Printf("KB/Sec,usec,usec,usec\r\n")
+
+	for nTest := 0; nTest < WRITE_COUNT; nTest++ {
+		err = ff.Rewind()
+		if err != nil {
+			fmt.Printf("rewind failed %s\r\n", err.Error())
+			led.ErrorBlinkFor(12)
+		}
+		maxLatency := int64(0)
+		minLatency := int64(9999999)
+		totalLatency := int64(0)
+		skipLatency := SKIP_FIRST_LATENCY
+		t := time.Since(start).Milliseconds()
+		for i := int64(0); i < n; i++ {
+			buf[BUF_SIZE - 1] = 0
+			m := time.Since(start).Microseconds()
+			br, err := ff.Read(buf)
+			if err != nil || br != BUF_SIZE {
+				fmt.Printf("read failed %s %d\r\n", err.Error(), br)
+				led.ErrorBlinkFor(13)
+			}
+			m = time.Since(start).Microseconds() - m
+			totalLatency += m
+			if buf[BUF_SIZE - 1] != '\n' {
+				fmt.Printf("data check error\r\n")
+				led.ErrorBlinkFor(14)
+			}
+			if skipLatency {
+				skipLatency = false
+			} else {
+				if maxLatency < m {
+					maxLatency = m
+				}
+				if minLatency > m {
+					minLatency = m
+				}
+			}
+			if i % 10 == 0 {
+				led.Toggle()
+			}
+		}
+		t = time.Since(start).Milliseconds() - t
+		s, err := ff.Size()
+		if err != nil {
+			fmt.Printf("size error %s\r\n", err.Error())
+			led.ErrorBlinkFor(15)
+		}
+		fmt.Printf("%7.4f, %d, %d, %d\r\n", float32(s)/float32(t), maxLatency, minLatency, totalLatency/n)
+	}
+	fmt.Printf("\r\nDone\r\n")
+
+	led.OkBlinkFor()
 }

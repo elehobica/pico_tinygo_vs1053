@@ -394,6 +394,11 @@ func (f *File) Tell() (ret int64, err error) {
 	return int64(pos), nil
 }
 
+// Rewind changes the position of the file to the beginning of the file
+func (f *File) Rewind() (err error) {
+	return f.Seek(0)
+}
+
 /*
 // Seek changes the position of the file
 func (f *File) Seek(offset int64, whence int) (ret int64, err error) {
