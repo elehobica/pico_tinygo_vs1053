@@ -51,7 +51,28 @@ func (pin Pin) OkBlinkFor() {
 	}
 }
 
+type TestError struct {
+	error
+	Code int
+}
+
 func main() {
+	led := &Pin{&ledPin}
+	led.Configure(machine.PinConfig{Mode: machine.PinOutput})
+	led.High()
+
+	err := fatfs_test(led)
+	if err != nil {
+		fmt.Printf("ERROR[%d]: %s\r\n", err.Code, err.Error())
+		led.ErrorBlinkFor(err.Code)
+	}
+
+	led.OkBlinkFor()
+}
+
+func fatfs_test(led *Pin) (testError *TestError) {
+	testError = nil
+
 	// SPI BaudRate
 	const SPI_BAUDRATE_MHZ = 50
 
@@ -76,6 +97,19 @@ func main() {
 
 	var buf []byte
 
+	defer func() {
+		if r := recover(); r != nil {
+			switch v := r.(type) {
+			case TestError:
+				testError = r.(*TestError)
+			case error:
+				testError = &TestError{ error: v, Code: -1 }
+			default:
+				testError = &TestError{ error: fmt.Errorf("unknown error"), Code: -2 }
+			}
+		}
+	}()
+
 	start := time.Now()
 
 	println(); println()
@@ -83,15 +117,10 @@ func main() {
 	println("== pico_tinygo_fatfs_test ==")
 	println("============================")
 
-	led := &Pin{&ledPin}
-	led.Configure(machine.PinConfig{Mode: machine.PinOutput})
-	led.High()
-
 	sd := sdcard.New(spi, sckPin, sdoPin, sdiPin, csPin)
 	err := sd.Configure()
 	if err != nil {
-		fmt.Printf("%s\r\n", err.Error())
-		led.ErrorBlinkFor(1)
+		panic(&TestError{ error: fmt.Errorf("configure error: %s", err.Error()), Code: 1 })
 	}
 
 	// Set SPI clock speed (not effective if set before here)
@@ -106,8 +135,7 @@ func main() {
 
 	err = filesystem.Mount()
 	if err != nil {
-		fmt.Printf("%s\r\n", err.Error())
-		led.ErrorBlinkFor(2)
+		panic(&TestError{ error: fmt.Errorf("mount error: %s", err.Error()), Code: 2 })
 	}
 	fmt.Printf("mount ok\r\n")
 
@@ -118,16 +146,14 @@ func main() {
 
 	f, err := filesystem.OpenFile("bench.dat", os.O_RDWR | os.O_CREATE | os.O_TRUNC)
 	if err != nil {
-		fmt.Printf("open error %s\r\n", err.Error())
-		led.ErrorBlinkFor(3)
+		panic(&TestError{ error: fmt.Errorf("open error: %s", err.Error()), Code: 3 })
 	}
 	defer f.Close()
 
 	// get *fatfs.File type from tinyfs.File interface (Type Assertion)
 	ff, ok := f.(*fatfs.File)
 	if ok != true {
-		fmt.Printf("conversion to *fatfs.File failed\r\n")
-		led.ErrorBlinkFor(4)
+		panic(&TestError{ error: fmt.Errorf("conversion to *fatfs.File failed"), Code: 4 })
 	}
 
 	// fill buf with known data
@@ -154,19 +180,16 @@ func main() {
 	for nTest := 0; nTest < WRITE_COUNT; nTest++ {
 		err = ff.Seek(0)
 		if err != nil {
-			fmt.Printf("seek error %s\r\n", err.Error())
-			led.ErrorBlinkFor(5)
+			panic(&TestError{ error: fmt.Errorf("seek error: %s", err.Error()), Code: 5 })
 		}
 		err = ff.Truncate()
 		if err != nil {
-			fmt.Printf("truncate error %s\r\n", err.Error())
-			led.ErrorBlinkFor(6)
+			panic(&TestError{ error: fmt.Errorf("truncate error: %s", err.Error()), Code: 6 })
 		}
 		if PRE_ALLOCATE {
 			err = ff.Expand(FILE_SIZE, false)
 			if err != nil {
-				fmt.Printf("preallocate error %s\r\n", err.Error())
-				led.ErrorBlinkFor(7)
+				panic(&TestError{ error: fmt.Errorf("preallocate error: %s", err.Error()), Code: 7 })
 			}
 		}
 		maxLatency := int64(0)
@@ -178,8 +201,7 @@ func main() {
 			m := time.Since(start).Microseconds()
 			bw, err := ff.Write(buf)
 			if err != nil || bw != BUF_SIZE {
-				fmt.Printf("write failed %s %d\r\n", err.Error(), bw)
-				led.ErrorBlinkFor(8)
+				panic(&TestError{ error: fmt.Errorf("write failed: %s %d", err.Error(), bw), Code: 8 })
 			}
 			m = time.Since(start).Microseconds() - m
 			totalLatency += m
@@ -187,8 +209,7 @@ func main() {
 				// Wait until first write to SD, not just a copy to the cache.
 				pos, err := ff.Tell()
 				if err != nil {
-					fmt.Printf("tell error %s\r\n", err.Error())
-					led.ErrorBlinkFor(9)
+					panic(&TestError{ error: fmt.Errorf("tell error: %s", err.Error()), Code: 9 })
 				}
 				skipLatency = pos < 512
 			} else {
@@ -205,14 +226,12 @@ func main() {
 		}
 		err = ff.Sync()
 		if err != nil {
-			fmt.Printf("sync failed %s\r\n", err.Error())
-			led.ErrorBlinkFor(10)
+			panic(&TestError{ error: fmt.Errorf("sync failed: %s", err.Error()), Code: 10 })
 		}
 		t = time.Since(start).Milliseconds() - t
 		s, err := ff.Size()
 		if err != nil {
-			fmt.Printf("size error %s\r\n", err.Error())
-			led.ErrorBlinkFor(11)
+			panic(&TestError{ error: fmt.Errorf("size error: %s", err.Error()), Code: 11 })
 		}
 		fmt.Printf("%7.4f, %d, %d, %d\r\n", float32(s)/float32(t), maxLatency, minLatency, totalLatency/n)
 	}
@@ -229,8 +248,7 @@ func main() {
 	for nTest := 0; nTest < WRITE_COUNT; nTest++ {
 		err = ff.Rewind()
 		if err != nil {
-			fmt.Printf("rewind failed %s\r\n", err.Error())
-			led.ErrorBlinkFor(12)
+			panic(&TestError{ error: fmt.Errorf("rewind failed: %s", err.Error()), Code: 12 })
 		}
 		maxLatency := int64(0)
 		minLatency := int64(9999999)
@@ -242,14 +260,12 @@ func main() {
 			m := time.Since(start).Microseconds()
 			br, err := ff.Read(buf)
 			if err != nil || br != BUF_SIZE {
-				fmt.Printf("read failed %s %d\r\n", err.Error(), br)
-				led.ErrorBlinkFor(13)
+				panic(&TestError{ error: fmt.Errorf("read failed: %s %d", err.Error(), br), Code: 13 })
 			}
 			m = time.Since(start).Microseconds() - m
 			totalLatency += m
 			if buf[BUF_SIZE - 1] != '\n' {
-				fmt.Printf("data check error\r\n")
-				led.ErrorBlinkFor(14)
+				panic(&TestError{ error: fmt.Errorf("data check error"), Code: 14 })
 			}
 			if skipLatency {
 				skipLatency = false
@@ -268,12 +284,11 @@ func main() {
 		t = time.Since(start).Milliseconds() - t
 		s, err := ff.Size()
 		if err != nil {
-			fmt.Printf("size error %s\r\n", err.Error())
-			led.ErrorBlinkFor(15)
+			panic(&TestError{ error: fmt.Errorf("size error: %s", err.Error()), Code: 15 })
 		}
 		fmt.Printf("%7.4f, %d, %d, %d\r\n", float32(s)/float32(t), maxLatency, minLatency, totalLatency/n)
 	}
 	fmt.Printf("\r\nDone\r\n")
 
-	led.OkBlinkFor()
+	return testError
 }
