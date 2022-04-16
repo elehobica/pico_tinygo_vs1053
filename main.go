@@ -124,10 +124,11 @@ func fatfs_test(led *Pin) (testError *TestError) {
 	}
 	fmt.Printf("mount ok\r\n")
 
-	fs_type := filesystem.GetFsType()
+	fs_type, err := filesystem.GetFsType()
 	fmt.Printf("Type is %s\r\n", fs_type.String())
 
-	fmt.Printf("Card size: %7.2f GB (GB = 1E9 bytes)\r\n\r\n", float32(filesystem.GetCardSize()) * 1e-9)
+	size, err := filesystem.GetCardSize()
+	fmt.Printf("Card size: %7.2f GB (GB = 1E9 bytes)\r\n\r\n", float32(size) * 1e-9)
 
 	f, err := filesystem.OpenFile("bench.dat", os.O_RDWR | os.O_CREATE | os.O_TRUNC)
 	if err != nil {

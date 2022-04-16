@@ -190,12 +190,12 @@ func (l *FATFS) Configure(config *Config) *FATFS {
 	return l
 }
 
-func (l *FATFS) GetFsType() Type {
-	return Type(l.fs.fs_type)
+func (l *FATFS) GetFsType() (Type, error) {
+	return Type(l.fs.fs_type), nil
 }
 
-func (l *FATFS) GetCardSize() int64 {
-	return int64(l.fs.csize) * int64(l.fs.n_fatent) * SectorSize
+func (l *FATFS) GetCardSize() (int64, error) {
+	return int64(l.fs.csize) * int64(l.fs.n_fatent) * SectorSize, nil
 }
 
 func (l *FATFS) Mount() error {
