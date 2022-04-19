@@ -190,14 +190,6 @@ func (l *FATFS) Configure(config *Config) *FATFS {
 	return l
 }
 
-func (l *FATFS) GetFsType() (Type, error) {
-	return Type(l.fs.fs_type), nil
-}
-
-func (l *FATFS) GetCardSize() (int64, error) {
-	return int64(l.fs.csize) * int64(l.fs.n_fatent) * SectorSize, nil
-}
-
 func (l *FATFS) Mount() error {
 	return errval(C.f_mount(l.fs))
 }
@@ -379,26 +371,6 @@ func (f *File) Read(buf []byte) (n int, err error) {
 	return int(br), nil
 }
 
-// Seek changes the position of the file
-func (f *File) Seek(offset int64) error {
-	var ofs C.FSIZE_t = C.FSIZE_t(offset)
-	errno := C.f_lseek(f.fileptr(), ofs)
-	return errval(errno)
-}
-
-func (f *File) Tell() (ret int64, err error) {
-	pos := int64(f.fileptr().fptr)
-	if pos < 0 {
-		return -1, errval(C.FRESULT(C.FR_INT_ERR))
-	}
-	return int64(pos), nil
-}
-
-// Rewind changes the position of the file to the beginning of the file
-func (f *File) Rewind() (err error) {
-	return f.Seek(0)
-}
-
 /*
 // Seek changes the position of the file
 func (f *File) Seek(offset int64, whence int) (ret int64, err error) {
@@ -443,12 +415,6 @@ func (f *File) Sync() error {
 	return errval(C.f_sync(f.fileptr()))
 }
 
-// Truncates the size of the file to the specified size
-//
-func (f *File) Truncate() error {
-	return errval(C.f_truncate(f.fileptr()))
-}
-
 /*
 // Truncates the size of the file to the specified size
 //
@@ -457,15 +423,6 @@ func (f *File) Truncate(size uint32) error {
 	return errval(C.lfs_file_truncate(f.lfs.lfs, &f.fptr, C.lfs_off_t(size)))
 }
 */
-
-//  Allocate a contiguous block to the file
-//
-func (f *File) Expand(size int64, flag bool) error {
-	var fsz C.FSIZE_t = C.FSIZE_t(size)
-	var opt C.BYTE;
-	if flag { opt = 1 } else { opt = 0 }
-	return errval(C.f_expand(f.fileptr(), fsz, opt))
-}
 
 func (f *File) Write(buf []byte) (n int, err error) {
 	if f.IsDir() {

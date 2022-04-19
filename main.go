@@ -276,5 +276,5 @@ func fatfs_test(led *Pin) (testError *TestError) {
 	}
 	fmt.Printf("\r\nDone\r\n")
 
-	return testError
+	return nil
 }
