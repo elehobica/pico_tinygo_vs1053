@@ -9,7 +9,7 @@ import (
 	"unsafe"
 
 	"tinygo.org/x/tinyfs"
-	"github.com/elehobica/pico_tinygo_fatfs_test/internal/gopointer"
+	"pico_tinygo_fatfs_test/internal/gopointer"
 )
 
 const (

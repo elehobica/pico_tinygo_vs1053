@@ -6,7 +6,7 @@ import (
 	"time"
 	"os"
 
-	"github.com/elehobica/pico_tinygo_fatfs_test/fatfs"
+	"pico_tinygo_fatfs_test/fatfs"
 	"tinygo.org/x/drivers/sdcard"
 )
 
