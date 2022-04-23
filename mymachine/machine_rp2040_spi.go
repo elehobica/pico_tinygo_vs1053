@@ -4,6 +4,8 @@ package mymachine
 
 import (
 	"machine"
+	"device/rp"
+	"errors"
 )
 
 type SPI struct {
@@ -11,11 +13,6 @@ type SPI struct {
 }
 
 /*
-import (
-	"device/rp"
-	"errors"
-)
-
 // SPI on the RP2040
 var (
 	SPI0  = &_SPI0
@@ -44,6 +41,7 @@ type SPIConfig struct {
 	// RX or Serial Data In (MISO if rp2040 is master)
 	SDI Pin
 }
+*/
 
 var (
 	ErrLSBNotSupported    = errors.New("SPI LSB unsupported on PL022")
@@ -52,9 +50,11 @@ var (
 	ErrSPIBaud            = errors.New("SPI baud too low or above 66.5Mhz")
 )
 
+/*
 type SPI struct {
 	Bus *rp.SPI0_Type
 }
+*/
 
 // time to wait on a transaction before dropping. Unit in Microseconds for compatibility with ticks().
 const _SPITimeout = 10 * 1000 // 10 ms
@@ -102,6 +102,7 @@ func (spi SPI) Tx(w, r []byte) (err error) {
 	return err
 }
 
+/*
 // Write a single byte and read a single byte from TX/RX FIFO.
 func (spi SPI) Transfer(w byte) (byte, error) {
 	var deadline = ticks() + _SPITimeout
@@ -246,6 +247,7 @@ func (spi SPI) deinit() (resetVal uint32) {
 	rp.RESETS.RESET.SetBits(resetVal)
 	return resetVal
 }
+*/
 
 // isWritable returns false if no space is available to write. True if a write is possible
 //go:inline
@@ -368,4 +370,3 @@ func (spi SPI) txrx(tx, rx []byte) error {
 
 	return nil
 }
-*/
