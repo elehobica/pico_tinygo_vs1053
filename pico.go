@@ -5,10 +5,11 @@ package main
 
 import (
 	"machine"
+	"pico_tinygo_fatfs_test/mymachine"
 )
 
 func init() {
-	spi = *machine.SPI0
+	spi = mymachine.SPI{machine.SPI0}
 	sckPin = machine.GP2
 	sdoPin = machine.GP3
 	sdiPin = machine.GP4

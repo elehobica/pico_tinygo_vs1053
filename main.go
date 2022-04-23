@@ -10,10 +10,11 @@ import (
 	"pico_tinygo_fatfs_test/sdcard"
 	//"tinygo.org/x/tinyfs/fatfs"
 	"pico_tinygo_fatfs_test/fatfs"
+	"pico_tinygo_fatfs_test/mymachine"
 )
 
 var (
-	spi    machine.SPI
+	spi    mymachine.SPI
 	sckPin machine.Pin
 	sdoPin machine.Pin
 	sdiPin machine.Pin

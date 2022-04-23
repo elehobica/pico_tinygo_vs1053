@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"machine"
 	"time"
+
+	"pico_tinygo_fatfs_test/mymachine"
 )
 
 const (
@@ -28,7 +30,7 @@ var (
 )
 
 type Device struct {
-	bus        machine.SPI
+	bus        mymachine.SPI
 	sck        machine.Pin
 	sdo        machine.Pin
 	sdi        machine.Pin
@@ -41,7 +43,7 @@ type Device struct {
 	CSD        *CSD
 }
 
-func New(b machine.SPI, sck, sdo, sdi, cs machine.Pin) Device {
+func New(b mymachine.SPI, sck, sdo, sdi, cs machine.Pin) Device {
 	return Device{
 		bus:        b,
 		cs:         cs,
