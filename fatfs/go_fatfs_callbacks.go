@@ -9,6 +9,7 @@ import (
 	"unsafe"
 
 	"tinygo.org/x/tinyfs"
+	//"tinygo.org/x/tinyfs/internal/gopointer"
 	"pico_tinygo_fatfs_test/internal/gopointer"
 )
 

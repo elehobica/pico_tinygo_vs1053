@@ -6,8 +6,10 @@ import (
 	"time"
 	"os"
 
+	//"tinygo.org/x/drivers/sdcard"
+	"pico_tinygo_fatfs_test/sdcard"
+	//"tinygo.org/x/tinyfs/fatfs"
 	"pico_tinygo_fatfs_test/fatfs"
-	"tinygo.org/x/drivers/sdcard"
 )
 
 var (
