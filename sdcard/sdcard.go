@@ -334,7 +334,7 @@ func (d Device) ReadData(block uint32, dst []byte) error {
 		return fmt.Errorf("waitStartBlock()")
 	}
 
-	err := d.bus.Tx(dummy[:512], dst)
+	err := d.bus.Tx([]byte{0xFF}, dst)
 	if err != nil {
 		return err
 	}
