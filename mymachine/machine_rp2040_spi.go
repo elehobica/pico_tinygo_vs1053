@@ -2,10 +2,13 @@
 
 package mymachine
 
+// #include "./spi.h"
+import "C"
 import (
 	"machine"
 	"device/rp"
 	"errors"
+	"unsafe"
 )
 
 type SPI struct {
@@ -284,6 +287,14 @@ func (spi SPI) isBusy() bool {
 
 // tx writes buffer to SPI ignoring Rx.
 func (spi SPI) tx(tx []byte) error {
+	spi_inst := (*C.spi_inst_t)(unsafe.Pointer(&spi.Bus.SSPCR0.Reg))
+	src := (*C.uint8_t)(unsafe.Pointer(&tx[0]))
+	plen := C.size_t(len(tx))
+	C.spi_write_blocking(spi_inst, src, plen)
+	return nil
+}
+/*
+func (spi SPI) tx(tx []byte) error {
 	var deadline = ticks() + _SPITimeout
 	// Write to TX FIFO whilst ignoring RX, then clean up afterward. When RX
 	// is full, PL022 inhibits RX pushes, and sets a sticky flag on
@@ -313,11 +324,21 @@ func (spi SPI) tx(tx []byte) error {
 	spi.Bus.SSPICR.Set(rp.SPI0_SSPICR_RORIC)
 	return nil
 }
+*/
 
 // rx reads buffer to SPI ignoring x.
 // txrepeat is output repeatedly on SO as data is read in from SI.
 // Generally this can be 0, but some devices require a specific value here,
 // e.g. SD cards expect 0xff
+func (spi SPI) rx(rx []byte, txrepeat byte) error {
+	spi_inst := (*C.spi_inst_t)(unsafe.Pointer(&spi.Bus.SSPCR0.Reg))
+	repeated_tx_data := C.uint8_t(txrepeat)
+	dst := (*C.uint8_t)(unsafe.Pointer(&rx[0]))
+	plen := C.size_t(len(rx))
+	C.spi_read_blocking(spi_inst, repeated_tx_data, dst, plen)
+	return nil
+}
+/*
 func (spi SPI) rx(rx []byte, txrepeat byte) error {
 	var deadline = ticks() + _SPITimeout
 	plen := len(rx)
@@ -339,9 +360,23 @@ func (spi SPI) rx(rx []byte, txrepeat byte) error {
 	}
 	return nil
 }
+*/
 
 // Write len bytes from src to SPI. Simultaneously read len bytes from SPI to dst.
 // Note this function is guaranteed to exit in a known amount of time (bits sent * time per bit)
+func (spi SPI) txrx(tx, rx []byte) error {
+	plen := len(tx)
+	if plen != len(rx) {
+		return ErrTxInvalidSliceSize
+	}
+	spi_inst := (*C.spi_inst_t)(unsafe.Pointer(&spi.Bus.SSPCR0.Reg))
+	src := (*C.uint8_t)(unsafe.Pointer(&tx[0]))
+	dst := (*C.uint8_t)(unsafe.Pointer(&rx[0]))
+	pplen := C.size_t(plen)
+	C.spi_write_read_blocking(spi_inst, src, dst, pplen)
+	return nil
+}
+/*
 func (spi SPI) txrx(tx, rx []byte) error {
 	var deadline = ticks() + _SPITimeout
 	plen := len(tx)
@@ -370,3 +405,4 @@ func (spi SPI) txrx(tx, rx []byte) error {
 
 	return nil
 }
+*/

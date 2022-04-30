@@ -10,6 +10,7 @@ This project supports:
 * SD, SDHC, SDXC cards
 * FAT16, FAT32, exFAT formats
 * write/read speed benchmark
+* machine optimization by CGO to improve SPI access performance
 
 ## Supported Board
 * Raspberry Pi Pico
@@ -128,14 +129,14 @@ Starting write test, please wait.
 write speed and latency
 speed,max,min,avg
 KB/Sec,usec,usec,usec
-349.1884, 17431, 1042, 1442
-361.0920, 22377, 1062, 1391
+390.2342, 17208, 1092, 1292
+362.8215, 54979, 897, 1383
 
 Starting read test, please wait.
 
 read speed and latency
 speed,max,min,avg
 KB/Sec,usec,usec,usec
-354.7382, 22428, 1284, 1417
-353.7843, 22470, 1293, 1421
+835.5080, 16601, 554, 591
+830.9257, 21483, 559, 594
 ```
