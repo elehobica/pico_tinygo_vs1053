@@ -195,7 +195,7 @@ func (d *Device) initCard() error {
 		SCK:       d.sck,
 		SDO:       d.sdo,
 		SDI:       d.sdi,
-		Frequency: 4000000,
+		Frequency: 50000000,
 		LSBFirst:  false,
 		Mode:      0, // phase=0, polarity=0
 	})

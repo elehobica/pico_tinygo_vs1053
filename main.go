@@ -74,9 +74,6 @@ func main() {
 }
 
 func fatfs_test(led *Pin) (testError *TestError) {
-	// SPI BaudRate
-	const SPI_BAUDRATE_MHZ = 50
-
 	// Set PRE_ALLOCATE true to pre-allocate file clusters.
 	const PRE_ALLOCATE = true
 
@@ -110,9 +107,6 @@ func fatfs_test(led *Pin) (testError *TestError) {
 	if err != nil {
 		return &TestError{ error: fmt.Errorf("configure error: %s", err.Error()), Code: 1 }
 	}
-
-	// Set SPI clock speed (not effective if set before here)
-	spi.SetBaudRate(SPI_BAUDRATE_MHZ * machine.MHz)
 
 	filesystem := fatfs.New(&sd)
 
