@@ -5,7 +5,7 @@ package main
 
 import (
 	"machine"
-	"pico_tinygo_fatfs_test/mymachine"
+	"github.com/elehobica/pico_tinygo_fatfs_test/mymachine"
 )
 
 func init() {

@@ -67,7 +67,7 @@ $ docker run -it -v /mnt/d/somewhere/share:/share tinygo/tinygo:latest /bin/bash
 
 * Go Module Configuration
 ```
-# go mod init pico_tinygo_fatfs_test
+# go mod init github.com/elehobica/pico_tinygo_fatfs_test
 # go mod tidy
 ```
 

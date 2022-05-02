@@ -13,9 +13,9 @@ import (
 
 	"tinygo.org/x/tinyfs"
 	//"tinygo.org/x/tinyfs/internal/gopointer"
-	"pico_tinygo_fatfs_test/internal/gopointer"
+	"github.com/elehobica/pico_tinygo_fatfs_test/internal/gopointer"
 	//"tinygo.org/x/tinyfs/internal/util"
-	"pico_tinygo_fatfs_test/internal/util"
+	"github.com/elehobica/pico_tinygo_fatfs_test/internal/util"
 )
 
 const (

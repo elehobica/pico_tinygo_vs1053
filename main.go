@@ -7,10 +7,10 @@ import (
 	"os"
 
 	//"tinygo.org/x/drivers/sdcard"
-	"pico_tinygo_fatfs_test/sdcard"
+	"github.com/elehobica/pico_tinygo_fatfs_test/sdcard"
 	//"tinygo.org/x/tinyfs/fatfs"
-	"pico_tinygo_fatfs_test/fatfs"
-	"pico_tinygo_fatfs_test/mymachine"
+	"github.com/elehobica/pico_tinygo_fatfs_test/fatfs"
+	"github.com/elehobica/pico_tinygo_fatfs_test/mymachine"
 )
 
 var (

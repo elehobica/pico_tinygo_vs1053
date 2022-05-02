@@ -10,7 +10,7 @@ import (
 
 	"tinygo.org/x/tinyfs"
 	//"tinygo.org/x/tinyfs/internal/gopointer"
-	"pico_tinygo_fatfs_test/internal/gopointer"
+	"github.com/elehobica/pico_tinygo_fatfs_test/internal/gopointer"
 )
 
 const (
