@@ -1,7 +1,6 @@
-# Raspberry Pi Pico TinyGo FatFs Test
+# Raspberry Pi Pico TinyGo VS1053
 ## Overview
-This project is an example of FatFs on Raspberry Pi Pico by TinyGo.
-* ported from [elehobica/pico_fatfs_test](https://github.com/elehobica/pico_fatfs_test)
+This project is an example of VS1053 on Raspberry Pi Pico by TinyGo.
 * confirmed with TinyGo 0.22.0
 
 This project supports:
@@ -46,7 +45,7 @@ This project supports:
 * Before starting docker, clone repository to your local enviroment (by GitBash etc.)
 ```
 > cd /d/somewhere/share
-> git clone -b main https://github.com/elehobica/pico_tinygo_fatfs_test.git
+> git clone -b main https://github.com/elehobica/pico_tinygo_vs1053.git
 ```
 
 * Docker
@@ -60,83 +59,25 @@ $ docker run -it -v /mnt/d/somewhere/share:/share tinygo/tinygo:latest /bin/bash
 # cd /share
 
 (copy repository for docker native directory for best performance of WSL2, otherwise stay /share)
-(# cp -r /share/pico_tinygo_fatfs_test ~/ && cd ~ )
+(# cp -r /share/pico_tinygo_vs1053 ~/ && cd ~ )
 
-# cd pico_tinygo_fatfs_test
+# cd pico_tinygo_vs1053
 ```
 
 * Go Module Configuration
 ```
-# go mod init github.com/elehobica/pico_tinygo_fatfs_test
+# go mod init github.com/elehobica/pico_tinygo_vs1053
 # go mod tidy
 ```
 
 * TinyGo Build
 ```
-# tinygo build -target=pico -o pico_tinygo_fatfs_test.uf2
+# tinygo build -target=pico -o pico_tinygo_vs1053.uf2
 
 (copy UF2 back to Windows local if working on docker native directory)
-(# cp pico_tinygo_fatfs_test.uf2 /share/pico_tinygo_fatfs_test/ )
+(# cp pico_tinygo_vs1053.uf2 /share/pico_tinygo_vs1053/ )
 ```
 
 * Put UF2 
 
-Then, go back to Windows environment and put "pico_tinygo_fatfs_test.uf2" on RPI-RP2 drive
-
-## Benchmark Comparison with C++
-### Sansung microSDHC EVO Plus 32GB (UHS-I U1)
-* Reference [pico_fatfs_test](https://github.com/elehobica/pico_fatfs_test)
-```
-=====================
-== pico_fatfs_test ==
-=====================
-mount ok
-Type is FAT32
-Card size:   32.00 GB (GB = 1E9 bytes)
-
-FILE_SIZE_MB = 5
-BUF_SIZE = 512 bytes
-Starting write test, please wait.
-
-write speed and latency
-speed,max,min,avg
-KB/Sec,usec,usec,usec
-447.7192, 6896, 1007, 1142
-446.4797, 7589, 1024, 1145
-
-Starting read test, please wait.
-
-read speed and latency
-speed,max,min,avg
-KB/Sec,usec,usec,usec
-974.9766, 1050, 403, 524
-974.4066, 1049, 402, 524
-```
-
-* TinyGo (this repository)
-```
-============================
-== pico_tinygo_fatfs_test ==
-============================
-mount ok
-Type is FAT32
-Card size:   32.00 GB (GB = 1E9 bytes)
-
-FILE_SIZE_MB = 5
-BUF_SIZE = 512 bytes
-Starting write test, please wait.
-
-write speed and latency
-speed,max,min,avg
-KB/Sec,usec,usec,usec
-390.2342, 17208, 1092, 1292
-362.8215, 54979, 897, 1383
-
-Starting read test, please wait.
-
-read speed and latency
-speed,max,min,avg
-KB/Sec,usec,usec,usec
-835.5080, 16601, 554, 591
-830.9257, 21483, 559, 594
-```
+Then, go back to Windows environment and put "pico_tinygo_vs1053.uf2" on RPI-RP2 drive

@@ -5,7 +5,7 @@ import (
 	"machine"
 	"time"
 
-	"github.com/elehobica/pico_tinygo_fatfs_test/mymachine"
+	"github.com/elehobica/pico_tinygo_vs1053/mymachine"
 )
 
 const (

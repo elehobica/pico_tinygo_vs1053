@@ -7,10 +7,10 @@ import (
 	"os"
 
 	//"tinygo.org/x/drivers/sdcard"
-	"github.com/elehobica/pico_tinygo_fatfs_test/sdcard"
+	"github.com/elehobica/pico_tinygo_vs1053/sdcard"
 	//"tinygo.org/x/tinyfs/fatfs"
-	"github.com/elehobica/pico_tinygo_fatfs_test/fatfs"
-	"github.com/elehobica/pico_tinygo_fatfs_test/mymachine"
+	"github.com/elehobica/pico_tinygo_vs1053/fatfs"
+	"github.com/elehobica/pico_tinygo_vs1053/mymachine"
 )
 
 var (
@@ -98,9 +98,9 @@ func fatfs_test(led *Pin) (testError *TestError) {
 	start := time.Now()
 
 	println(); println()
-	println("============================")
-	println("== pico_tinygo_fatfs_test ==")
-	println("============================")
+	println("========================")
+	println("== pico_tinygo_vs1053 ==")
+	println("========================")
 
 	sd := sdcard.New(spi, sckPin, sdoPin, sdiPin, csPin)
 	err := sd.Configure()
