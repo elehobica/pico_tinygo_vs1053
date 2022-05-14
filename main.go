@@ -4,23 +4,31 @@ import (
 	"fmt"
 	"machine"
 	"time"
-	"os"
 
 	//"tinygo.org/x/drivers/sdcard"
 	"github.com/elehobica/pico_tinygo_vs1053/sdcard"
 	//"tinygo.org/x/tinyfs/fatfs"
 	"github.com/elehobica/pico_tinygo_vs1053/fatfs"
 	"github.com/elehobica/pico_tinygo_vs1053/mymachine"
+	"github.com/elehobica/pico_tinygo_vs1053/vs1053"
 )
 
 var (
-	spi    mymachine.SPI
-	sckPin machine.Pin
-	sdoPin machine.Pin
-	sdiPin machine.Pin
-	csPin  machine.Pin
-	ledPin machine.Pin
+	spi0     mymachine.SPI
+	sckPin   machine.Pin
+	sdoPin   machine.Pin
+	sdiPin   machine.Pin
+	csPin    machine.Pin
 
+	spi1     mymachine.SPI
+	sck1Pin  machine.Pin
+	sdo1Pin  machine.Pin
+	sdi1Pin  machine.Pin
+	cs1Pin   machine.Pin
+	xrstPin  machine.Pin
+	xdcsPin  machine.Pin
+	xdreqPin machine.Pin
+	ledPin   machine.Pin
 	serial  = machine.Serial
 )
 
@@ -64,7 +72,7 @@ func main() {
 	led.Configure(machine.PinConfig{Mode: machine.PinOutput})
 	led.High()
 
-	err := fatfs_test(led)
+	err := vs1053_test(led)
 	if err != nil {
 		fmt.Printf("ERROR[%d]: %s\r\n", err.Code, err.Error())
 		led.ErrorBlinkFor(err.Code)
@@ -73,39 +81,22 @@ func main() {
 	led.OkBlinkFor()
 }
 
-func fatfs_test(led *Pin) (testError *TestError) {
-	// Set PRE_ALLOCATE true to pre-allocate file clusters.
-	const PRE_ALLOCATE = true
-
-	// Set SKIP_FIRST_LATENCY true if the first read/write to the SD can
-	// be avoid by writing a file header or reading the first record.
-	const SKIP_FIRST_LATENCY = true
-
-	// Size of read/write.
-	const BUF_SIZE = 512
-
-	// File size in MB where MB = 1,000,000 bytes.
-	const FILE_SIZE_MB = 5
-
-	// Write pass count.
-	const WRITE_COUNT = 2
-
-	// File size in bytes.
-	const FILE_SIZE = 1000000*FILE_SIZE_MB
-
-	var buf []byte
-
-	start := time.Now()
-
+func vs1053_test(led *Pin) (testError *TestError) {
 	println(); println()
 	println("========================")
 	println("== pico_tinygo_vs1053 ==")
 	println("========================")
 
-	sd := sdcard.New(spi, sckPin, sdoPin, sdiPin, csPin)
-	err := sd.Configure()
+	codec := vs1053.New(spi1, sck1Pin, sdo1Pin, sdi1Pin,  cs1Pin, xrstPin, xdcsPin, xdreqPin)
+	err := codec.Configure()
 	if err != nil {
-		return &TestError{ error: fmt.Errorf("configure error: %s", err.Error()), Code: 1 }
+		return &TestError{ error: fmt.Errorf("codec configure error: %s", err.Error()), Code: 1 }
+	}
+
+	sd := sdcard.New(spi0, sckPin, sdoPin, sdiPin, csPin)
+	err = sd.Configure()
+	if err != nil {
+		return &TestError{ error: fmt.Errorf("sdcard configure error: %s", err.Error()), Code: 2 }
 	}
 
 	filesystem := fatfs.New(&sd)
@@ -117,161 +108,66 @@ func fatfs_test(led *Pin) (testError *TestError) {
 
 	err = filesystem.Mount()
 	if err != nil {
-		return &TestError{ error: fmt.Errorf("mount error: %s", err.Error()), Code: 2 }
+		return &TestError{ error: fmt.Errorf("mount error: %s", err.Error()), Code: 3 }
 	}
-	fmt.Printf("mount ok\r\n")
+	fmt.Printf("card mount ok\r\n")
 
-	fs_type, err := filesystem.GetFsType()
-	fmt.Printf("Type is %s\r\n", fs_type.String())
+	codec.SwitchToMp3Mode()
 
-	size, err := filesystem.GetCardSize()
-	fmt.Printf("Card size: %7.2f GB (GB = 1E9 bytes)\r\n\r\n", float32(size) * 1e-9)
+	var volumeAtt uint8 = 60
+	musicPlayer := vs1053.NewPlayer(&codec, filesystem)
+	musicPlayer.SetVolume(volumeAtt, volumeAtt)
 
-	f, err := filesystem.OpenFile("bench.dat", os.O_RDWR | os.O_CREATE | os.O_TRUNC)
-	if err != nil {
-		return &TestError{ error: fmt.Errorf("open error: %s", err.Error()), Code: 3 }
-	}
-	defer f.Close()
+	// Play one file, don't return until complete
+	fmt.Printf("Playing track 001 (by Blocking)\r\n");
+	musicPlayer.PlayFullFile("/track001.mp3");
 
-	// get *fatfs.File type from tinyfs.File interface (Type Assertion)
-	ff, ok := f.(*fatfs.File)
-	if ok != true {
-		return &TestError{ error: fmt.Errorf("conversion to *fatfs.File failed"), Code: 4 }
-	}
+	// If DREQ is on an interrupt pin, we can do background audio playing
+	musicPlayer.UseInterrupt()
 
-	// fill buf with known data
-	if BUF_SIZE > 1 {
-		for i := 0; i < (BUF_SIZE + 3) / 4 * 4 - 2; i++ {
-			buf = append(buf, 'A' + uint8(i % 26))
+	// Play another file in the background, REQUIRES interrupts!
+	fmt.Printf("Playing track 002 (by Interrupt)\r\n");
+	musicPlayer.StartPlayingFile("/track002.mp3");
+
+	// file is playing in the background
+	for loop := 0; ; loop++ {
+		if musicPlayer.Stopped() {
+			fmt.Printf("Done playing music\r\n")
+			return nil
 		}
-		buf = append(buf, '\r')
-	}
-	buf = append(buf, '\n')
-
-	fmt.Printf("FILE_SIZE_MB = %d\r\n", FILE_SIZE_MB)
-	fmt.Printf("BUF_SIZE = %d bytes\r\n", BUF_SIZE)
-	n := int64(FILE_SIZE / BUF_SIZE)
-
-	//----------------
-	// do write test
-	//----------------
-	fmt.Printf("Starting write test, please wait.\r\n\r\n")
-	fmt.Printf("write speed and latency\r\n")
-	fmt.Printf("speed,max,min,avg\r\n")
-	fmt.Printf("KB/Sec,usec,usec,usec\r\n")
-
-	for nTest := 0; nTest < WRITE_COUNT; nTest++ {
-		err = ff.Seek(0)
-		if err != nil {
-			return &TestError{ error: fmt.Errorf("seek error: %s", err.Error()), Code: 5 }
-		}
-		err = ff.Truncate()
-		if err != nil {
-			return &TestError{ error: fmt.Errorf("truncate error: %s", err.Error()), Code: 6 }
-		}
-		if PRE_ALLOCATE {
-			err = ff.Expand(FILE_SIZE, false)
-			if err != nil {
-				return &TestError{ error: fmt.Errorf("preallocate error: %s", err.Error()), Code: 7 }
-			}
-		}
-		maxLatency := int64(0)
-		minLatency := int64(9999999)
-		totalLatency := int64(0)
-		skipLatency := SKIP_FIRST_LATENCY
-		t := time.Since(start).Milliseconds()
-		for i := int64(0); i < n; i++ {
-			m := time.Since(start).Microseconds()
-			bw, err := ff.Write(buf)
-			if err != nil || bw != BUF_SIZE {
-				return &TestError{ error: fmt.Errorf("write failed: %s %d", err.Error(), bw), Code: 8 }
-			}
-			m = time.Since(start).Microseconds() - m
-			totalLatency += m
-			if skipLatency {
-				// Wait until first write to SD, not just a copy to the cache.
-				pos, err := ff.Tell()
-				if err != nil {
-					return &TestError{ error: fmt.Errorf("tell error: %s", err.Error()), Code: 9 }
+		if serial.Buffered() > 0 {
+			data, _ := serial.ReadByte()
+			switch data {
+			case 's':
+				musicPlayer.StopPlaying()
+			case 'p':
+				if !musicPlayer.Paused() {
+					fmt.Printf("Paused\r\n")
+					musicPlayer.PausePlaying(true)
+				} else {
+					fmt.Printf("Resumed\r\n")
+					musicPlayer.PausePlaying(false)
 				}
-				skipLatency = pos < 512
-			} else {
-				if maxLatency < m {
-					maxLatency = m
+			case '=':
+				fallthrough
+			case '+':
+				if volumeAtt > 0 {
+					volumeAtt--
+					musicPlayer.SetVolume(volumeAtt, volumeAtt)
 				}
-				if minLatency > m {
-					minLatency = m
+			case '-':
+				if volumeAtt < 254 {
+					volumeAtt++
+					musicPlayer.SetVolume(volumeAtt, volumeAtt)
 				}
-			}
-			if i % 10 == 0 {
-				led.Toggle()
+			default:
 			}
 		}
-		err = ff.Sync()
-		if err != nil {
-			return &TestError{ error: fmt.Errorf("sync failed: %s", err.Error()), Code: 10 }
+		if loop % 10 == 0 {
+			led.Toggle()
 		}
-		t = time.Since(start).Milliseconds() - t
-		s, err := ff.Size()
-		if err != nil {
-			return &TestError{ error: fmt.Errorf("size error: %s", err.Error()), Code: 11 }
-		}
-		fmt.Printf("%7.4f, %d, %d, %d\r\n", float32(s)/float32(t), maxLatency, minLatency, totalLatency/n)
+		time.Sleep(10 * time.Millisecond)
 	}
-	fmt.Printf("\r\n")
-
-	//----------------
-	// do read test
-	//----------------
-	fmt.Printf("Starting read test, please wait.\r\n\r\n")
-	fmt.Printf("read speed and latency\r\n")
-	fmt.Printf("speed,max,min,avg\r\n")
-	fmt.Printf("KB/Sec,usec,usec,usec\r\n")
-
-	for nTest := 0; nTest < WRITE_COUNT; nTest++ {
-		err = ff.Rewind()
-		if err != nil {
-			return &TestError{ error: fmt.Errorf("rewind failed: %s", err.Error()), Code: 12 }
-		}
-		maxLatency := int64(0)
-		minLatency := int64(9999999)
-		totalLatency := int64(0)
-		skipLatency := SKIP_FIRST_LATENCY
-		t := time.Since(start).Milliseconds()
-		for i := int64(0); i < n; i++ {
-			buf[BUF_SIZE - 1] = 0
-			m := time.Since(start).Microseconds()
-			br, err := ff.Read(buf)
-			if err != nil || br != BUF_SIZE {
-				return &TestError{ error: fmt.Errorf("read failed: %s %d", err.Error(), br), Code: 13 }
-			}
-			m = time.Since(start).Microseconds() - m
-			totalLatency += m
-			if buf[BUF_SIZE - 1] != '\n' {
-				return &TestError{ error: fmt.Errorf("data check error"), Code: 14 }
-			}
-			if skipLatency {
-				skipLatency = false
-			} else {
-				if maxLatency < m {
-					maxLatency = m
-				}
-				if minLatency > m {
-					minLatency = m
-				}
-			}
-			if i % 10 == 0 {
-				led.Toggle()
-			}
-		}
-		t = time.Since(start).Milliseconds() - t
-		s, err := ff.Size()
-		if err != nil {
-			return &TestError{ error: fmt.Errorf("size error: %s", err.Error()), Code: 15 }
-		}
-		fmt.Printf("%7.4f, %d, %d, %d\r\n", float32(s)/float32(t), maxLatency, minLatency, totalLatency/n)
-	}
-	fmt.Printf("\r\nDone\r\n")
 
 	return nil
 }

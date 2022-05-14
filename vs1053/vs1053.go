@@ -1,0 +1,169 @@
+/*!
+ * @file Adafruit_VS1053.cpp
+ *
+ * @mainpage Adafruit VS1053 Library
+ *
+ * @section intro_sec Introduction
+ *
+ * This is a library for the Adafruit VS1053 Codec Breakout
+ *
+ * Designed specifically to work with the Adafruit VS1053 Codec Breakout
+ * ----> https://www.adafruit.com/products/1381
+ *
+ * Adafruit invests time and resources providing this open source code,
+ * please support Adafruit and open-source hardware by purchasing
+ * products from Adafruit!
+ *
+ * @section author Author
+ *
+ * Written by Limor Fried/Ladyada for Adafruit Industries.
+ *
+ * @section license License
+ *
+ * BSD license, all text above must be included in any redistribution
+ */
+
+/*
+ * ported to TinyGo by Elehobica, 2022
+ */
+
+package vs1053
+
+import (
+    "time"
+    "machine"
+    "fmt"
+	"github.com/elehobica/pico_tinygo_vs1053/mymachine"
+)
+
+type Device struct {
+	bus        mymachine.SPI
+    csPin      machine.Pin
+    sckPin     machine.Pin
+    mosiPin    machine.Pin
+    misoPin    machine.Pin
+    rstPin     machine.Pin
+    dcsPin     machine.Pin
+    dreqPin    machine.Pin
+}
+
+func New(bus mymachine.SPI, sckPin, mosiPin, misoPin, csPin, rstPin, dcsPin, dreqPin machine.Pin) Device {
+    return Device{
+        bus:     bus,
+        sckPin:  sckPin,
+        mosiPin: mosiPin,
+        misoPin: misoPin,
+        csPin:   csPin,
+        rstPin:  rstPin,
+        dcsPin:  dcsPin,
+        dreqPin: dreqPin,
+    }
+}
+
+func (d *Device) Configure() error {
+    version := d.begin()
+    if version != VER_VS1053 {
+        return fmt.Errorf("vs1053 version: %d is not %d", version, VER_VS1053)
+    }
+    return nil
+}
+
+func (d *Device) softReset() {
+    d.sciWrite(REG_MODE, MODE_SM_SDINEW | MODE_SM_RESET)
+    time.Sleep(100 * time.Millisecond)
+}
+
+func (d *Device) reset() {
+    // TODO:
+    // http://www.vlsi.fi/player_vs1011_1002_1003/modularplayer/vs10xx_8c.html#a3
+    // hardware reset
+    if d.rstPin != machine.NoPin {
+        d.rstPin.Low()
+        time.Sleep(100 * time.Millisecond)
+        d.rstPin.High()
+    }
+    d.csPin.High()
+    d.dcsPin.High()
+    time.Sleep(100 * time.Millisecond)
+    d.softReset()
+    time.Sleep(100 * time.Millisecond)
+
+    d.sciWrite(REG_CLOCKF, 0x6000)
+
+    d.SetVolume(40, 40)
+}
+
+func (d *Device) begin() (version uint8) {
+    if d.rstPin != machine.NoPin {
+        d.rstPin.Configure(machine.PinConfig{Mode: machine.PinOutput})
+        d.rstPin.Low()
+    }
+
+    d.csPin.Configure(machine.PinConfig{Mode: machine.PinOutput})
+    d.csPin.High()
+    d.dcsPin.Configure(machine.PinConfig{Mode: machine.PinOutput})
+    d.dcsPin.High()
+    d.dreqPin.Configure(machine.PinConfig{Mode: machine.PinInput})
+
+    d.bus.Configure(machine.SPIConfig{
+        SCK:       d.sckPin,
+        SDO:       d.mosiPin,
+        SDI:       d.misoPin,
+        Frequency: 2000000, // recommend below 12MHz / 2
+        LSBFirst:  false,
+        Mode:      0, // phase=0, polarity=0
+    })
+
+    d.reset()
+
+    status := uint8(d.sciRead(REG_STATUS))
+    version = (status >> 4) & 0x0F
+    return version
+}
+
+func (d *Device) SetVolume(left, right uint8) {
+    // accepts values between 0 and 255 for left and right.
+    // maximum volume is 0x0000 and total silence is 0xFEFE.
+    // Setting SCI_VOL to 0xFFFF will activate analog powerdown mode.
+    var v uint16 = (uint16(left) << 8) | uint16(right)
+
+    d.noInterrupts()
+    defer d.interrupts()
+    d.sciWrite(REG_VOLUME, v)
+}
+
+func (d *Device) sciRead(addr uint8) (data uint16) {
+	d.csPin.Low()
+	defer d.csPin.High()
+    d.bus.Transfer(SCI_READ)
+    d.bus.Transfer(addr)
+    time.Sleep(10 * time.Microsecond)
+    data0, _ := d.bus.Transfer(0x00)
+    data1, _ := d.bus.Transfer(0x00)
+    data =(uint16(data0) << 8) | uint16(data1)
+    return data
+}
+
+func (d *Device) sciWrite(addr uint8, data uint16) {
+	d.csPin.Low()
+    defer d.csPin.High()
+    d.bus.Transfer(SCI_WRITE)
+    d.bus.Transfer(addr)
+    d.bus.Transfer(uint8(data >> 8))
+    d.bus.Transfer(uint8(data & 0xff))
+}
+
+func (d *Device) noInterrupts() {
+}
+
+func (d *Device) interrupts() {
+}
+
+func (d *Device) SwitchToMp3Mode() {
+    d.sciWrite(REG_WRAMADDR, 0xc017)
+    d.sciWrite(REG_WRAM, 3)
+    d.sciWrite(REG_WRAMADDR, 0xc019)
+    d.sciWrite(REG_WRAM, 3)
+    time.Sleep(100 * time.Millisecond)
+    d.softReset()
+}

@@ -9,11 +9,18 @@ import (
 )
 
 func init() {
-	spi = mymachine.SPI{machine.SPI0}
-	sckPin = machine.GP2
-	sdoPin = machine.GP3
-	sdiPin = machine.GP4
-	csPin = machine.GP5
-
-	ledPin = machine.LED
+	spi0     = mymachine.SPI{machine.SPI0}
+	sckPin   = machine.GPIO2
+	sdoPin   = machine.GPIO3
+	sdiPin   = machine.GPIO4
+	csPin    = machine.GPIO5
+	spi1     = mymachine.SPI{machine.SPI1}
+	sck1Pin  = machine.GPIO10
+	sdo1Pin  = machine.GPIO11
+	sdi1Pin  = machine.GPIO12
+	cs1Pin   = machine.GPIO13
+	xrstPin  = machine.GPIO14
+	xdcsPin  = machine.GPIO15
+	xdreqPin = machine.GPIO16
+	ledPin   = machine.LED
 }

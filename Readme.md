@@ -18,8 +18,14 @@ This project supports:
 ![Circuit Diagram](doc/Pico_FatFs_Test_Schematic.png)
 
 ## Pin Assignment
-### microSD card
+### Serial (CP2102 module)
+| Pico Pin # | Pin Name | Function | CP2102 module |
+----|----|----|----
+|  1 | GP0 | UART0_TX | RXD |
+|  2 | GP1 | UART0_RX | TXD |
+|  3 | GND | GND | GND |
 
+### microSD card
 | Pico Pin # | Pin Name | Function | microSD connector | microSD SPI board |
 ----|----|----|----|----
 |  4 | GP2 | SPI0_SCK | CLK (5) | CLK |
@@ -33,12 +39,18 @@ This project supports:
 * SPI0_TX and SPI0_RX needs to be pull-ed up with 10Kohm.
 * Wire length between Pico and SD card is very sensitive. Short wiring as possible is desired, otherwise errors such as Mount error, Preallocation error and Write fail will occur.
 
-### Serial (CP2102 module)
-| Pico Pin # | Pin Name | Function | CP2102 module |
+### VS1053 board
+| Pico Pin # | Pin Name | Function | VS1053 board |
 ----|----|----|----
-|  1 | GP0 | UART0_TX | RXD |
-|  2 | GP1 | UART0_RX | TXD |
-|  3 | GND | GND | GND |
+| 14 | GP10 | SPI1_SCK | SCK |
+| 15 | GP11 | SPI1_TX | MOSI |
+| 16 | GP12 | SPI1_RX | MISO |
+| 17 | GP13 | SPI1_CSn | XCS |
+| 19 | GP14 | GPIO Output | XRST |
+| 20 | GP15 | GPIO Output | XDCS |
+| 21 | GP16 | GPIO Input | DREQ |
+| 23 | GND | GND | DGND |
+| 40 | VBUS | 5V | 5V |
 
 ## How to build
 * Build is confirmed only in TinyGo Docker environment with Windows WSL2 integration
