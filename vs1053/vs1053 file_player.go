@@ -30,12 +30,10 @@
 package vs1053
 
 import (
-    "machine"
     "fmt"
 	"io"
 	"os"
     "time"
-    "sync"
     "strings"
 	"github.com/elehobica/pico_tinygo_vs1053/fatfs"
 )
@@ -43,25 +41,26 @@ import (
 type Player struct {
     codec        *Device
     fs           *fatfs.FATFS
-    mu           sync.Mutex
     playingMusic bool
 	currentTrack *fatfs.File
-    mp3buffer    []byte
+    mp3Buf       []byte
+    mp3BufReq    chan struct{}
 }
 
-var (
-    DATABUFFERLEN uint32 = 32 //!< Length of the data buffer
+const (
+    DATA_BUF_LEN uint32 = 32 //!< Length of the data buffer
+    REQ_CH_SZ    uint32 = 1  //!< Size of the request channel
 )
 
 func NewPlayer(codec *Device, fs *fatfs.FATFS) Player {
-	buff := make([]byte, DATABUFFERLEN)
+	buff := make([]byte, DATA_BUF_LEN)
     return Player{
         codec:        codec,
         fs:           fs,
-        mu:           sync.Mutex{},
         playingMusic: false,
         currentTrack: nil,
-        mp3buffer:    buff,
+        mp3Buf:       buff,
+        mp3BufReq:    nil,
     }
 }
 
@@ -70,10 +69,11 @@ func (p *Player) PlayFullFile(trackname string) error {
     if err != nil {
         return fmt.Errorf("StartPlayingFile failed")
     }
+
     for p.playingMusic {
-        p.feedBuffer()
-        time.Sleep(5 * time.Millisecond) // give IRQs a chance
+		time.Sleep(10 * time.Millisecond) // give goroutine a chance to run
     }
+
     // music file finished!
     return nil
 }
@@ -83,9 +83,7 @@ func (p *Player) StopPlaying() error {
     p.codec.sciWrite(REG_MODE, MODE_SM_LINE1 | MODE_SM_SDINEW | MODE_SM_CANCEL)
 
     // wrap it up!
-    p.playingMusic = false
-	p.currentTrack.Close()
-	p.currentTrack = nil
+    close(p.mp3BufReq)
     return nil
 }
 
@@ -107,14 +105,6 @@ func (p *Player) Stopped() bool {
 
 func (p *Player) SetVolume(left, right uint8) {
     p.codec.SetVolume(left, right)
-}
-
-func (p *Player) UseInterrupt() error {
-    if p.codec.dreqPin == machine.NoPin {
-        return fmt.Errorf("vs1053_file_player failed to use interrupt")
-    }
-    p.codec.dreqPin.SetInterrupt(machine.PinRising, p.feedBufferIRQ)
-    return nil
 }
 
 func (p *Player) StartPlayingFile(file string) error {
@@ -146,10 +136,6 @@ func (p *Player) StartPlayingFile(file string) error {
         p.currentTrack.Seek(pos)
     }
 
-    // don't let the IRQ get triggered by accident here
-    p.codec.noInterrupts()
-    defer p.codec.interrupts()
-
     // As explained in datasheet, set twice 0 in REG_DECODETIME to set time back to 0
     p.codec.sciWrite(REG_DECODETIME, 0x00)
     p.codec.sciWrite(REG_DECODETIME, 0x00)
@@ -157,14 +143,33 @@ func (p *Player) StartPlayingFile(file string) error {
     p.playingMusic = true
 
     // wait till its ready for data
-    for !p.readyForData() {}
+    for !p.codec.readyForData() {}
 
     // fill it up!
-    for p.playingMusic && p.readyForData() {
+    for p.playingMusic && p.codec.readyForData() {
         p.feedBuffer()
     }
 
-    // ok going forward, we can use the IRQ
+    // open channel & set interrupt
+    p.mp3BufReq = make(chan struct{}, REQ_CH_SZ)
+    p.codec.setDreqInterrupt(true, func() {
+        p.mp3BufReq <- struct{}{} // send event (no type)
+    })
+
+    // ok going forward, we can use goroutine
+    go func(req <-chan struct{}) {
+        for {
+            _, more := <-req
+            if !more {
+                p.playingMusic = false
+                p.currentTrack.Close()
+                p.currentTrack = nil
+                p.codec.setDreqInterrupt(false, nil)
+                return
+            }
+            p.feedBuffer()
+        }
+    } (p.mp3BufReq)
 
     return nil
 }
@@ -203,44 +208,22 @@ func (p *Player) mp3_ID3Jumper(mp3 *fatfs.File) (start int64, err error) {
     return start, nil
 }
 
-func (p *Player) feedBufferIRQ(pin machine.Pin) {
-    // Here pin == machine.NoPin
-    p.feedBuffer()
-}
-
 func (p *Player) feedBuffer() {
-    p.codec.noInterrupts()
-    defer p.codec.interrupts()
-    p.mu.Lock()
-    defer p.mu.Unlock()
-
-    if !p.playingMusic || p.currentTrack == nil || !p.readyForData() {
+    if !p.playingMusic || p.currentTrack == nil || !p.codec.readyForData() {
        return // paused or stopped
     }
 
     // Feed the hungry buffer! :)
-    for p.readyForData() {
+    for p.codec.readyForData() {
         // Read some audio data from the SD card file
-        bytesread, err := p.currentTrack.Read(p.mp3buffer)
+        br, err := p.currentTrack.Read(p.mp3Buf)
 
         if err == io.EOF {
             // must be at the end of the file, wrap it up!
-            p.playingMusic = false
-            p.currentTrack.Close()
-            p.currentTrack = nil
+            close(p.mp3BufReq)
             break
         }
 
-        p.playData(bytesread)
+        p.codec.playData(p.mp3Buf[:br])
     }
-}
-
-func (p *Player) readyForData() bool {
-    return p.codec.dreqPin.Get()
-}
-
-func (p *Player) playData(n int) {
-	p.codec.dcsPin.Low()
-	defer p.codec.dcsPin.High()
-    p.codec.bus.Tx(p.mp3buffer[:n], nil)
 }

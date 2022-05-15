@@ -30,14 +30,16 @@
 package vs1053
 
 import (
-    "time"
     "machine"
+    "time"
+    "sync"
     "fmt"
 	"github.com/elehobica/pico_tinygo_vs1053/mymachine"
 )
 
 type Device struct {
 	bus        mymachine.SPI
+    spiMutex   sync.Mutex
     csPin      machine.Pin
     sckPin     machine.Pin
     mosiPin    machine.Pin
@@ -49,14 +51,15 @@ type Device struct {
 
 func New(bus mymachine.SPI, sckPin, mosiPin, misoPin, csPin, rstPin, dcsPin, dreqPin machine.Pin) Device {
     return Device{
-        bus:     bus,
-        sckPin:  sckPin,
-        mosiPin: mosiPin,
-        misoPin: misoPin,
-        csPin:   csPin,
-        rstPin:  rstPin,
-        dcsPin:  dcsPin,
-        dreqPin: dreqPin,
+        bus:        bus,
+        spiMutex:   sync.Mutex{},
+        sckPin:     sckPin,
+        mosiPin:    mosiPin,
+        misoPin:    misoPin,
+        csPin:      csPin,
+        rstPin:     rstPin,
+        dcsPin:     dcsPin,
+        dreqPin:    dreqPin,
     }
 }
 
@@ -127,12 +130,12 @@ func (d *Device) SetVolume(left, right uint8) {
     // Setting SCI_VOL to 0xFFFF will activate analog powerdown mode.
     var v uint16 = (uint16(left) << 8) | uint16(right)
 
-    d.noInterrupts()
-    defer d.interrupts()
     d.sciWrite(REG_VOLUME, v)
 }
 
 func (d *Device) sciRead(addr uint8) (data uint16) {
+    d.spiMutex.Lock()
+    defer d.spiMutex.Unlock()
 	d.csPin.Low()
 	defer d.csPin.High()
     d.bus.Transfer(SCI_READ)
@@ -145,18 +148,14 @@ func (d *Device) sciRead(addr uint8) (data uint16) {
 }
 
 func (d *Device) sciWrite(addr uint8, data uint16) {
+    d.spiMutex.Lock()
+    defer d.spiMutex.Unlock()
 	d.csPin.Low()
     defer d.csPin.High()
     d.bus.Transfer(SCI_WRITE)
     d.bus.Transfer(addr)
     d.bus.Transfer(uint8(data >> 8))
     d.bus.Transfer(uint8(data & 0xff))
-}
-
-func (d *Device) noInterrupts() {
-}
-
-func (d *Device) interrupts() {
 }
 
 func (d *Device) SwitchToMp3Mode() {
@@ -166,4 +165,29 @@ func (d *Device) SwitchToMp3Mode() {
     d.sciWrite(REG_WRAM, 3)
     time.Sleep(100 * time.Millisecond)
     d.softReset()
+}
+
+func (d *Device) readyForData() bool {
+    return d.dreqPin.Get()
+}
+
+func (d *Device) playData(buf []byte) {
+    d.spiMutex.Lock()
+    defer d.spiMutex.Unlock()
+
+	d.dcsPin.Low()
+	defer d.dcsPin.High()
+    d.bus.Tx(buf, nil)
+}
+
+func (d *Device) setDreqInterrupt(flg bool, f func()) error {
+    if flg {
+        if d.dreqPin == machine.NoPin {
+            return fmt.Errorf("vs1053 failed to set interrupt")
+        }
+        d.dreqPin.SetInterrupt(machine.PinRising, func (pin machine.Pin) { f() })
+    } else {
+        d.dreqPin.SetInterrupt(machine.PinRising, nil)
+    }
+    return nil
 }

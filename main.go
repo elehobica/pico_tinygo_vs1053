@@ -122,9 +122,6 @@ func vs1053_test(led *Pin) (testError *TestError) {
 	fmt.Printf("Playing track 001 (by Blocking)\r\n");
 	musicPlayer.PlayFullFile("/track001.mp3");
 
-	// If DREQ is on an interrupt pin, we can do background audio playing
-	musicPlayer.UseInterrupt()
-
 	// Play another file in the background, REQUIRES interrupts!
 	fmt.Printf("Playing track 002 (by Interrupt)\r\n");
 	musicPlayer.StartPlayingFile("/track002.mp3");
