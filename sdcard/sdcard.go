@@ -23,6 +23,10 @@ const (
 	SD_CARD_TYPE_SD1  = 1 // Standard capacity V1 SD card
 	SD_CARD_TYPE_SD2  = 2 // Standard capacity V2 SD card
 	SD_CARD_TYPE_SDHC = 3 // High Capacity SD card
+
+	// SPI Frequency
+    SlowFreq =   250000
+    FastFreq = 50000000
 )
 
 var (
@@ -31,9 +35,6 @@ var (
 
 type Device struct {
 	bus        mymachine.SPI
-	sck        machine.Pin
-	sdo        machine.Pin
-	sdi        machine.Pin
 	cs         machine.Pin
 	cmdbuf     []byte
 	dummybuf   []byte
@@ -41,15 +42,14 @@ type Device struct {
 	sdCardType byte
 	CID        *CID
 	CSD        *CSD
+    slowBaud   *mymachine.SPIBaudRateReg
+    fastBaud   *mymachine.SPIBaudRateReg
 }
 
-func New(b mymachine.SPI, sck, sdo, sdi, cs machine.Pin) Device {
+func New(bus mymachine.SPI, cs machine.Pin) Device {
 	return Device{
-		bus:        b,
+		bus:        bus,
 		cs:         cs,
-		sck:        sck,
-		sdo:        sdo,
-		sdi:        sdi,
 		cmdbuf:     make([]byte, 6),
 		dummybuf:   make([]byte, 512),
 		tokenbuf:   make([]byte, 1),
@@ -58,22 +58,17 @@ func New(b mymachine.SPI, sck, sdo, sdi, cs machine.Pin) Device {
 }
 
 func (d *Device) Configure() error {
+    d.slowBaud, _ = d.bus.SaveBaudRate(SlowFreq)
+    d.fastBaud, _ = d.bus.SaveBaudRate(FastFreq)
 	return d.initCard()
 }
 
 func (d *Device) initCard() error {
-	d.bus.Configure(machine.SPIConfig{
-		SCK:       d.sck,
-		SDO:       d.sdo,
-		SDI:       d.sdi,
-		Frequency: 250000,
-		LSBFirst:  false,
-		Mode:      0, // phase=0, polarity=0
-	})
-
 	// set pin modes
 	d.cs.Configure(machine.PinConfig{Mode: machine.PinOutput})
 	d.cs.High()
+
+	d.bus.RestoreBaudRate(d.slowBaud)
 
 	for i := range dummy {
 		dummy[i] = 0xFF
@@ -191,14 +186,7 @@ func (d *Device) initCard() error {
 
 	d.cs.High()
 
-	d.bus.Configure(machine.SPIConfig{
-		SCK:       d.sck,
-		SDO:       d.sdo,
-		SDI:       d.sdi,
-		Frequency: 50000000,
-		LSBFirst:  false,
-		Mode:      0, // phase=0, polarity=0
-	})
+	d.bus.RestoreBaudRate(d.fastBaud)
 
 	return nil
 }

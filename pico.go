@@ -5,16 +5,15 @@ package main
 
 import (
 	"machine"
-	"github.com/elehobica/pico_tinygo_vs1053/mymachine"
 )
 
 func init() {
-	spi0     = mymachine.SPI{machine.SPI0}
+	spi0     = machine.SPI0
 	sckPin   = machine.GPIO2
 	sdoPin   = machine.GPIO3
 	sdiPin   = machine.GPIO4
 	csPin    = machine.GPIO5
-	spi1     = mymachine.SPI{machine.SPI1}
+	spi1     = machine.SPI1
 	sck1Pin  = machine.GPIO10
 	sdo1Pin  = machine.GPIO11
 	sdi1Pin  = machine.GPIO12

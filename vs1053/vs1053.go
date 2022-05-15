@@ -32,18 +32,13 @@ package vs1053
 import (
     "machine"
     "time"
-    "sync"
     "fmt"
-	"github.com/elehobica/pico_tinygo_vs1053/mymachine"
+    "github.com/elehobica/pico_tinygo_vs1053/mymachine"
 )
 
 type Device struct {
-	bus        mymachine.SPI
-    spiMutex   sync.Mutex
+    bus        mymachine.SPI
     csPin      machine.Pin
-    sckPin     machine.Pin
-    mosiPin    machine.Pin
-    misoPin    machine.Pin
     rstPin     machine.Pin
     dcsPin     machine.Pin
     dreqPin    machine.Pin
@@ -56,13 +51,9 @@ const (
     FastFreq = 8000000 // below 12.288 MHz * 3.0 / 4 (for SCI Write and SDI Write)
 )
 
-func New(bus mymachine.SPI, sckPin, mosiPin, misoPin, csPin, rstPin, dcsPin, dreqPin machine.Pin) Device {
+func New(bus mymachine.SPI, csPin, rstPin, dcsPin, dreqPin machine.Pin) Device {
     return Device{
         bus:        bus,
-        spiMutex:   sync.Mutex{},
-        sckPin:     sckPin,
-        mosiPin:    mosiPin,
-        misoPin:    misoPin,
         csPin:      csPin,
         rstPin:     rstPin,
         dcsPin:     dcsPin,
@@ -121,15 +112,6 @@ func (d *Device) begin() (version uint8) {
     d.dcsPin.High()
     d.dreqPin.Configure(machine.PinConfig{Mode: machine.PinInput})
 
-    d.bus.Configure(machine.SPIConfig{
-        SCK:       d.sckPin,
-        SDO:       d.mosiPin,
-        SDI:       d.misoPin,
-        Frequency: SlowFreq,
-        LSBFirst:  false,
-        Mode:      0, // phase=0, polarity=0
-    })
-
     // save SPI BaudRate for SCI and SDI
     d.slowBaud, _ = d.bus.SaveBaudRate(SlowFreq)
     d.fastBaud, _ = d.bus.SaveBaudRate(FastFreq)
@@ -160,10 +142,10 @@ func (d *Device) SetVolume(left, right uint8) {
 }
 
 func (d *Device) sciRead(addr uint8) (data uint16) {
-    d.spiMutex.Lock()
-    defer d.spiMutex.Unlock()
-	d.csPin.Low()
-	defer d.csPin.High()
+    d.bus.Lock()
+    defer d.bus.Unlock()
+    d.csPin.Low()
+    defer d.csPin.High()
     d.bus.RestoreBaudRate(d.slowBaud)
     d.bus.Transfer(SCI_READ)
     d.bus.Transfer(addr)
@@ -175,9 +157,9 @@ func (d *Device) sciRead(addr uint8) (data uint16) {
 }
 
 func (d *Device) sciWrite(addr uint8, data uint16) {
-    d.spiMutex.Lock()
-    defer d.spiMutex.Unlock()
-	d.csPin.Low()
+    d.bus.Lock()
+    defer d.bus.Unlock()
+    d.csPin.Low()
     defer d.csPin.High()
     d.bus.RestoreBaudRate(d.fastBaud)
     d.bus.Transfer(SCI_WRITE)
@@ -191,10 +173,10 @@ func (d *Device) readyForData() bool {
 }
 
 func (d *Device) playData(buf []byte) {
-    d.spiMutex.Lock()
-    defer d.spiMutex.Unlock()
-	d.dcsPin.Low()
-	defer d.dcsPin.High()
+    d.bus.Lock()
+    defer d.bus.Unlock()
+    d.dcsPin.Low()
+    defer d.dcsPin.High()
     d.bus.RestoreBaudRate(d.fastBaud)
     d.bus.Tx(buf, nil)
 }

@@ -9,10 +9,12 @@ import (
 	"device/rp"
 	"errors"
 	"unsafe"
+	"sync"
 )
 
 type SPI struct {
 	*machine.SPI
+	mu *sync.Mutex
 }
 
 type SPIBaudRateReg struct {
@@ -63,6 +65,21 @@ type SPI struct {
 	Bus *rp.SPI0_Type
 }
 */
+
+func NewSPI(spi *machine.SPI) (SPI) {
+	return SPI{
+		spi,
+		&sync.Mutex{},
+	}
+}
+
+func (spi SPI) Lock() {
+	spi.mu.Lock()
+}
+
+func (spi SPI) Unlock() {
+	spi.mu.Unlock()
+}
 
 // time to wait on a transaction before dropping. Unit in Microseconds for compatibility with ticks().
 const _SPITimeout = 10 * 1000 // 10 ms

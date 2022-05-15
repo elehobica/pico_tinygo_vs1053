@@ -31,18 +31,18 @@ package vs1053
 
 import (
     "fmt"
-	"io"
-	"os"
+    "io"
+    "os"
     "time"
     "strings"
-	"github.com/elehobica/pico_tinygo_vs1053/fatfs"
+    "github.com/elehobica/pico_tinygo_vs1053/fatfs"
 )
 
 type Player struct {
     codec        *Device
     fs           *fatfs.FATFS
     playingMusic bool
-	currentTrack *fatfs.File
+    currentTrack *fatfs.File
     mp3Buf       []byte
     mp3BufReq    chan struct{}
 }
@@ -53,7 +53,7 @@ const (
 )
 
 func NewPlayer(codec *Device, fs *fatfs.FATFS) Player {
-	buff := make([]byte, DATA_BUF_LEN)
+    buff := make([]byte, DATA_BUF_LEN)
     return Player{
         codec:        codec,
         fs:           fs,
@@ -71,7 +71,7 @@ func (p *Player) PlayFullFile(trackname string) error {
     }
 
     for p.playingMusic {
-		time.Sleep(10 * time.Millisecond) // give goroutine a chance to run
+        time.Sleep(10 * time.Millisecond) // give goroutine a chance to run
     }
 
     // music file finished!
@@ -115,16 +115,16 @@ func (p *Player) StartPlayingFile(file string) error {
     p.codec.sciWrite(REG_WRAMADDR, 0x1e29)
     p.codec.sciWrite(REG_WRAM, 0)
 
-	f, err := p.fs.OpenFile(file, os.O_RDONLY)
-	if err != nil {
-		return fmt.Errorf("open error: %s", err.Error())
-	}
+    f, err := p.fs.OpenFile(file, os.O_RDONLY)
+    if err != nil {
+        return fmt.Errorf("open error: %s", err.Error())
+    }
 
-	ff, ok := f.(*fatfs.File)
-	if ok != true {
+    ff, ok := f.(*fatfs.File)
+    if ok != true {
         return fmt.Errorf("conversion to *fatfs.File failed")
     }
-	p.currentTrack = ff
+    p.currentTrack = ff
 
     // We know we have a valid file. Check if .mp3
     // If so, check for ID3 tag and jump it if present.
