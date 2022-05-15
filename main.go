@@ -92,6 +92,7 @@ func vs1053_test(led *Pin) (testError *TestError) {
 	if err != nil {
 		return &TestError{ error: fmt.Errorf("codec configure error: %s", err.Error()), Code: 1 }
 	}
+	codec.SwitchToMp3Mode()
 
 	sd := sdcard.New(spi0, sckPin, sdoPin, sdiPin, csPin)
 	err = sd.Configure()
@@ -112,8 +113,6 @@ func vs1053_test(led *Pin) (testError *TestError) {
 	}
 	fmt.Printf("card mount ok\r\n")
 
-	codec.SwitchToMp3Mode()
-
 	var volumeAtt uint8 = 60
 	musicPlayer := vs1053.NewPlayer(&codec, filesystem)
 	musicPlayer.SetVolume(volumeAtt, volumeAtt)
@@ -122,8 +121,8 @@ func vs1053_test(led *Pin) (testError *TestError) {
 	fmt.Printf("Playing track 001 (by Blocking)\r\n");
 	musicPlayer.PlayFullFile("/track001.mp3");
 
-	// Play another file in the background, REQUIRES interrupts!
-	fmt.Printf("Playing track 002 (by Interrupt)\r\n");
+	// Play another file in the background
+	fmt.Printf("Playing track 002 (by Non-Blocking)\r\n");
 	musicPlayer.StartPlayingFile("/track002.mp3");
 
 	// file is playing in the background

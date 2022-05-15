@@ -15,6 +15,11 @@ type SPI struct {
 	*machine.SPI
 }
 
+type SPIBaudRateReg struct {
+    SSPCPSR uint32
+    SSPCR0  uint32
+}
+
 /*
 // SPI on the RP2040
 var (
@@ -406,3 +411,25 @@ func (spi SPI) txrx(tx, rx []byte) error {
 	return nil
 }
 */
+
+// Save BaudRate Register Setting for Restore() (Preserve current setting)
+func (spi SPI) SaveBaudRate(br uint32) (reg *SPIBaudRateReg, err error) {
+	defer spi.SetBaudRate(spi.GetBaudRate())
+    err = spi.SetBaudRate(br)
+	if err != nil {
+		return nil, err
+	}
+    cpsr := spi.Bus.SSPCPSR.Get()
+    cr0  := spi.Bus.SSPCR0.Get()
+    return &SPIBaudRateReg{
+        SSPCPSR: cpsr,
+        SSPCR0:  cr0,
+    }, nil
+}
+
+// Restore BaudRate Register Setting (because SetBaudRate() is too slow)
+func (spi SPI) RestoreBaudRate(reg *SPIBaudRateReg) (err error) {
+    spi.Bus.SSPCPSR.Set(reg.SSPCPSR)
+    spi.Bus.SSPCR0.Set(reg.SSPCR0)
+	return nil
+}

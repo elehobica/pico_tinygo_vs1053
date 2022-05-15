@@ -47,7 +47,14 @@ type Device struct {
     rstPin     machine.Pin
     dcsPin     machine.Pin
     dreqPin    machine.Pin
+    slowBaud   *mymachine.SPIBaudRateReg
+    fastBaud   *mymachine.SPIBaudRateReg
 }
+
+const (
+    SlowFreq = 1000000 // below 12.288 MHz * 3.0 / 7 (for SCI Read)
+    FastFreq = 8000000 // below 12.288 MHz * 3.0 / 4 (for SCI Write and SDI Write)
+)
 
 func New(bus mymachine.SPI, sckPin, mosiPin, misoPin, csPin, rstPin, dcsPin, dreqPin machine.Pin) Device {
     return Device{
@@ -60,6 +67,8 @@ func New(bus mymachine.SPI, sckPin, mosiPin, misoPin, csPin, rstPin, dcsPin, dre
         rstPin:     rstPin,
         dcsPin:     dcsPin,
         dreqPin:    dreqPin,
+        slowBaud:   nil,
+        fastBaud:   nil,
     }
 }
 
@@ -91,7 +100,11 @@ func (d *Device) reset() {
     d.softReset()
     time.Sleep(100 * time.Millisecond)
 
-    d.sciWrite(REG_CLOCKF, 0x6000)
+    // CLOCKF
+    //  b15-13: SC_MULT (multiply XTALI): 0: x1.0, 1: x2.0, 2: x2.5, 3: x3.0, 4: x3.5, 5: x4.0, 6: x4.5, 7: x5.0
+    //  b12-11: SC_ADD  (f/w multiplier): 0: no modification, 1: x1.0, 2: x1.5, 3: x2.0
+    //  b10: 0: SC_FREQ: 0 when 12.288 MHz operation
+    d.sciWrite(REG_CLOCKF, 0x6000) // x3.0
 
     d.SetVolume(40, 40)
 }
@@ -112,16 +125,29 @@ func (d *Device) begin() (version uint8) {
         SCK:       d.sckPin,
         SDO:       d.mosiPin,
         SDI:       d.misoPin,
-        Frequency: 2000000, // recommend below 12MHz / 2
+        Frequency: SlowFreq,
         LSBFirst:  false,
         Mode:      0, // phase=0, polarity=0
     })
+
+    // save SPI BaudRate for SCI and SDI
+    d.slowBaud, _ = d.bus.SaveBaudRate(SlowFreq)
+    d.fastBaud, _ = d.bus.SaveBaudRate(FastFreq)
 
     d.reset()
 
     status := uint8(d.sciRead(REG_STATUS))
     version = (status >> 4) & 0x0F
     return version
+}
+
+func (d *Device) SwitchToMp3Mode() {
+    d.sciWrite(REG_WRAMADDR, 0xc017)
+    d.sciWrite(REG_WRAM, 3)
+    d.sciWrite(REG_WRAMADDR, 0xc019)
+    d.sciWrite(REG_WRAM, 3)
+    time.Sleep(100 * time.Millisecond)
+    d.softReset()
 }
 
 func (d *Device) SetVolume(left, right uint8) {
@@ -138,6 +164,7 @@ func (d *Device) sciRead(addr uint8) (data uint16) {
     defer d.spiMutex.Unlock()
 	d.csPin.Low()
 	defer d.csPin.High()
+    d.bus.RestoreBaudRate(d.slowBaud)
     d.bus.Transfer(SCI_READ)
     d.bus.Transfer(addr)
     time.Sleep(10 * time.Microsecond)
@@ -152,19 +179,11 @@ func (d *Device) sciWrite(addr uint8, data uint16) {
     defer d.spiMutex.Unlock()
 	d.csPin.Low()
     defer d.csPin.High()
+    d.bus.RestoreBaudRate(d.fastBaud)
     d.bus.Transfer(SCI_WRITE)
     d.bus.Transfer(addr)
     d.bus.Transfer(uint8(data >> 8))
     d.bus.Transfer(uint8(data & 0xff))
-}
-
-func (d *Device) SwitchToMp3Mode() {
-    d.sciWrite(REG_WRAMADDR, 0xc017)
-    d.sciWrite(REG_WRAM, 3)
-    d.sciWrite(REG_WRAMADDR, 0xc019)
-    d.sciWrite(REG_WRAM, 3)
-    time.Sleep(100 * time.Millisecond)
-    d.softReset()
 }
 
 func (d *Device) readyForData() bool {
@@ -174,9 +193,9 @@ func (d *Device) readyForData() bool {
 func (d *Device) playData(buf []byte) {
     d.spiMutex.Lock()
     defer d.spiMutex.Unlock()
-
 	d.dcsPin.Low()
 	defer d.dcsPin.High()
+    d.bus.RestoreBaudRate(d.fastBaud)
     d.bus.Tx(buf, nil)
 }
 
