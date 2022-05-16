@@ -14,17 +14,12 @@ import (
 )
 
 var (
-	spi0     *machine.SPI
+	spi      *machine.SPI
 	sckPin   machine.Pin
 	sdoPin   machine.Pin
 	sdiPin   machine.Pin
-	csPin    machine.Pin
-
-	spi1     *machine.SPI
-	sck1Pin  machine.Pin
-	sdo1Pin  machine.Pin
-	sdi1Pin  machine.Pin
-	cs1Pin   machine.Pin
+	csSdPin  machine.Pin
+	csVsPin  machine.Pin
 	xrstPin  machine.Pin
 	xdcsPin  machine.Pin
 	xdreqPin machine.Pin
@@ -72,25 +67,20 @@ func main() {
 	led.Configure(machine.PinConfig{Mode: machine.PinOutput})
 	led.High()
 
-	mySpi0 := mymachine.NewSPI(spi0)
-	mySpi0.Configure(machine.SPIConfig{
+	// Create SPI devices
+	mySpi := mymachine.NewSPI(spi)
+	mySpi.Configure(machine.SPIConfig{
 		SCK:       sckPin,
 		SDO:       sdoPin,
 		SDI:       sdiPin,
 		LSBFirst:  false,
 		Mode:      0, // phase=0, polarity=0
 	})
+	codec := vs1053.New(mySpi, csVsPin, xrstPin, xdcsPin, xdreqPin)
+	sd := sdcard.New(mySpi, csSdPin)
 
-	mySpi1 := mymachine.NewSPI(spi1)
-	mySpi1.Configure(machine.SPIConfig{
-		SCK:       sck1Pin,
-		SDO:       sdo1Pin,
-		SDI:       sdi1Pin,
-		LSBFirst:  false,
-		Mode:      0, // phase=0, polarity=0
-	})
-
-	err := vs1053_test(led, mySpi0, mySpi1)
+	// Start Test
+	err := vs1053_test(led, codec, sd)
 	if err != nil {
 		fmt.Printf("ERROR[%d]: %s\r\n", err.Code, err.Error())
 		led.ErrorBlinkFor(err.Code)
@@ -99,20 +89,18 @@ func main() {
 	led.OkBlinkFor()
 }
 
-func vs1053_test(led *Pin, spi0 mymachine.SPI, spi1 mymachine.SPI) (testError *TestError) {
+func vs1053_test(led *Pin, codec vs1053.Device, sd sdcard.Device) (testError *TestError) {
 	println(); println()
 	println("========================")
 	println("== pico_tinygo_vs1053 ==")
 	println("========================")
 
-	codec := vs1053.New(spi1, cs1Pin, xrstPin, xdcsPin, xdreqPin)
 	err := codec.Configure()
 	if err != nil {
 		return &TestError{ error: fmt.Errorf("codec configure error: %s", err.Error()), Code: 1 }
 	}
 	codec.SwitchToMp3Mode()
 
-	sd := sdcard.New(spi0, csPin)
 	err = sd.Configure()
 	if err != nil {
 		return &TestError{ error: fmt.Errorf("sdcard configure error: %s", err.Error()), Code: 2 }
