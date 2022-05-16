@@ -58,6 +58,8 @@ func New(bus mymachine.SPI, cs machine.Pin) Device {
 }
 
 func (d *Device) Configure() error {
+	d.bus.Lock()
+	defer d.bus.Unlock()
     d.slowBaud, _ = d.bus.SaveBaudRate(SlowFreq)
     d.fastBaud, _ = d.bus.SaveBaudRate(FastFreq)
 	return d.initCard()
@@ -171,14 +173,14 @@ func (d *Device) initCard() error {
 
 	var buf [16]byte
 	// read CID
-	err := d.ReadCID(buf[:])
+	err := d.readCID(buf[:])
 	if err != nil {
 		return err
 	}
 	d.CID = NewCID(buf[:])
 
 	// read CSD
-	err = d.ReadCSD(buf[:])
+	err = d.readCSD(buf[:])
 	if err != nil {
 		return err
 	}
@@ -273,13 +275,13 @@ func (d Device) waitStartBlock() error {
 	return nil
 }
 
-// ReadCSD reads the CSD using CMD9.
-func (d Device) ReadCSD(csd []byte) error {
+// readCSD reads the CSD using CMD9.
+func (d Device) readCSD(csd []byte) error {
 	return d.readRegister(CMD9_SEND_CSD, csd)
 }
 
-// ReadCID reads the CID using CMD10
-func (d Device) ReadCID(csd []byte) error {
+// readCID reads the CID using CMD10
+func (d Device) readCID(csd []byte) error {
 	return d.readRegister(CMD10_SEND_CID, csd)
 }
 
@@ -305,8 +307,8 @@ func (d Device) readRegister(cmd uint8, dst []byte) error {
 	return nil
 }
 
-// ReadData reads 512 bytes from sdcard into dst.
-func (d Device) ReadData(block uint32, dst []byte) error {
+// readData reads 512 bytes from sdcard into dst.
+func (d Device) readData(block uint32, dst []byte) error {
 	if len(dst) < 512 {
 		return fmt.Errorf("len(dst) must be greater than or equal to 512")
 	}
@@ -337,8 +339,8 @@ func (d Device) ReadData(block uint32, dst []byte) error {
 	return nil
 }
 
-// WriteMultiStart starts the continuous write mode using CMD25.
-func (d Device) WriteMultiStart(block uint32) error {
+// writeMultiStart starts the continuous write mode using CMD25.
+func (d Device) writeMultiStart(block uint32) error {
 	// use address if not SDHC card
 	if d.sdCardType != SD_CARD_TYPE_SDHC {
 		block <<= 9
@@ -353,9 +355,9 @@ func (d Device) WriteMultiStart(block uint32) error {
 	return nil
 }
 
-// WriteMulti performs continuous writing. It is necessary to call
-// WriteMultiStart() in prior.
-func (d Device) WriteMulti(buf []byte) error {
+// writeMulti performs continuous writing. It is necessary to call
+// writeMultiStart() in prior.
+func (d Device) writeMulti(buf []byte) error {
 	// send Data Token for CMD25
 	d.bus.Transfer(byte(0xFC))
 
@@ -388,8 +390,8 @@ func (d Device) WriteMulti(buf []byte) error {
 	return nil
 }
 
-// WriteMultiStop exits the continuous write mode.
-func (d Device) WriteMultiStop() error {
+// writeMultiStop exits the continuous write mode.
+func (d Device) writeMultiStop() error {
 	defer d.cs.High()
 
 	// Stop Tran token for CMD25
@@ -406,8 +408,8 @@ func (d Device) WriteMultiStop() error {
 	return nil
 }
 
-// WriteData writes 512 bytes from dst to sdcard.
-func (d Device) WriteData(block uint32, src []byte) error {
+// writeData writes 512 bytes from dst to sdcard.
+func (d Device) writeData(block uint32, src []byte) error {
 	if len(src) < 512 {
 		return fmt.Errorf("len(src) must be greater than or equal to 512")
 	}
@@ -454,10 +456,13 @@ func (d Device) WriteData(block uint32, src []byte) error {
 }
 
 // ReadAt reads the given number of bytes from the sdcard.
-func (dev *Device) ReadAt(buf []byte, addr int64) (int, error) {
+func (d *Device) ReadAt(buf []byte, addr int64) (int, error) {
+	d.bus.Lock()
+	defer d.bus.Unlock()
+	d.bus.RestoreBaudRate(d.fastBaud)
 	block := uint64(addr)
 	// use address if not SDHC card
-	if dev.sdCardType == SD_CARD_TYPE_SDHC {
+	if d.sdCardType == SD_CARD_TYPE_SDHC {
 		block >>= 9
 	}
 
@@ -475,11 +480,11 @@ func (dev *Device) ReadAt(buf []byte, addr int64) (int, error) {
 			end = 512
 		}
 
-		err := dev.ReadData(uint32(block), dev.dummybuf)
+		err := d.readData(uint32(block), d.dummybuf)
 		if err != nil {
 			return 0, err
 		}
-		copy(buf[idx:], dev.dummybuf[start:end])
+		copy(buf[idx:], d.dummybuf[start:end])
 
 		remain -= end - start
 		idx += end - start
@@ -491,11 +496,11 @@ func (dev *Device) ReadAt(buf []byte, addr int64) (int, error) {
 		start = 0
 		end = 512
 
-		err := dev.ReadData(uint32(block), dev.dummybuf)
+		err := d.readData(uint32(block), d.dummybuf)
 		if err != nil {
 			return 0, err
 		}
-		copy(buf[idx:], dev.dummybuf[start:end])
+		copy(buf[idx:], d.dummybuf[start:end])
 
 		remain -= end - start
 		idx += end - start
@@ -507,11 +512,11 @@ func (dev *Device) ReadAt(buf []byte, addr int64) (int, error) {
 		start = 0
 		end = remain
 
-		err := dev.ReadData(uint32(block), dev.dummybuf)
+		err := d.readData(uint32(block), d.dummybuf)
 		if err != nil {
 			return 0, err
 		}
-		copy(buf[idx:], dev.dummybuf[start:end])
+		copy(buf[idx:], d.dummybuf[start:end])
 
 		remain -= end - start
 		idx += end - start
@@ -522,10 +527,13 @@ func (dev *Device) ReadAt(buf []byte, addr int64) (int, error) {
 }
 
 // WriteAt writes the given number of bytes to sdcard.
-func (dev *Device) WriteAt(buf []byte, addr int64) (n int, err error) {
+func (d *Device) WriteAt(buf []byte, addr int64) (n int, err error) {
+	d.bus.Lock()
+	defer d.bus.Unlock()
+	d.bus.RestoreBaudRate(d.fastBaud)
 	block := uint64(addr)
 	// use address if not SDHC card
-	if dev.sdCardType == SD_CARD_TYPE_SDHC {
+	if d.sdCardType == SD_CARD_TYPE_SDHC {
 		block >>= 9
 	}
 
@@ -543,13 +551,13 @@ func (dev *Device) WriteAt(buf []byte, addr int64) (n int, err error) {
 			end = 512
 		}
 
-		err := dev.ReadData(uint32(block), dev.dummybuf)
+		err := d.readData(uint32(block), d.dummybuf)
 		if err != nil {
 			return 0, err
 		}
-		copy(dev.dummybuf[start:end], buf[idx:])
+		copy(d.dummybuf[start:end], buf[idx:])
 
-		err = dev.WriteData(uint32(block), dev.dummybuf)
+		err = d.writeData(uint32(block), d.dummybuf)
 		if err != nil {
 			return 0, err
 		}
@@ -564,7 +572,7 @@ func (dev *Device) WriteAt(buf []byte, addr int64) (n int, err error) {
 		start = 0
 		end = 512
 
-		err := dev.WriteData(uint32(block), buf[idx:idx+512])
+		err := d.writeData(uint32(block), buf[idx:idx+512])
 		if err != nil {
 			return 0, err
 		}
@@ -579,13 +587,13 @@ func (dev *Device) WriteAt(buf []byte, addr int64) (n int, err error) {
 		start = 0
 		end = remain
 
-		err := dev.ReadData(uint32(block), dev.dummybuf)
+		err := d.readData(uint32(block), d.dummybuf)
 		if err != nil {
 			return 0, err
 		}
-		copy(dev.dummybuf[start:end], buf[idx:])
+		copy(d.dummybuf[start:end], buf[idx:])
 
-		err = dev.WriteData(uint32(block), dev.dummybuf)
+		err = d.writeData(uint32(block), d.dummybuf)
 		if err != nil {
 			return 0, err
 		}
@@ -599,33 +607,36 @@ func (dev *Device) WriteAt(buf []byte, addr int64) (n int, err error) {
 }
 
 // Size returns the number of bytes in this sdcard.
-func (dev *Device) Size() int64 {
-	return int64(dev.CSD.Size())
+func (d *Device) Size() int64 {
+	return int64(d.CSD.Size())
 }
 
 // WriteBlockSize returns the block size in which data can be written to
 // memory.
-func (dev *Device) WriteBlockSize() int64 {
+func (d *Device) WriteBlockSize() int64 {
 	return 512
 }
 
 // EraseBlockSize returns the smallest erasable area on this sdcard in bytes.
-func (dev *Device) EraseBlockSize() int64 {
+func (d *Device) EraseBlockSize() int64 {
 	return 512
 }
 
 // EraseBlocks erases the given number of blocks.
-func (dev *Device) EraseBlocks(start, len int64) error {
-	dev.WriteMultiStart(uint32(start))
+func (d *Device) EraseBlocks(start, len int64) error {
+	d.bus.Lock()
+	defer d.bus.Unlock()
+	d.bus.RestoreBaudRate(d.fastBaud)
+	d.writeMultiStart(uint32(start))
 
-	for i := range dev.dummybuf {
-		dev.dummybuf[i] = 0
+	for i := range d.dummybuf {
+		d.dummybuf[i] = 0
 	}
 
 	for i := 0; i < int(len); i++ {
-		dev.WriteMulti(dev.dummybuf)
+		d.writeMulti(d.dummybuf)
 	}
 
-	dev.WriteMultiStop()
+	d.writeMultiStop()
 	return nil
 }
