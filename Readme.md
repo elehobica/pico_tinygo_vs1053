@@ -15,7 +15,7 @@ This project supports:
 * Raspberry Pi Pico
 
 ## Ciruit Diagram
-![Circuit Diagram](doc/Pico_FatFs_Test_Schematic.png)
+![Circuit Diagram](doc/Pico_VS1053_Schematic.png)
 
 ## Pin Assignment
 ### Serial (CP2102 module)
