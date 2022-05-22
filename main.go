@@ -4,9 +4,11 @@ import (
 	"fmt"
 	"machine"
 	"time"
+	"os"
 
 	//"tinygo.org/x/drivers/sdcard"
 	"github.com/elehobica/pico_tinygo_vs1053/sdcard"
+	"tinygo.org/x/tinyfs"
 	//"tinygo.org/x/tinyfs/fatfs"
 	"github.com/elehobica/pico_tinygo_vs1053/fatfs"
 	"github.com/elehobica/pico_tinygo_vs1053/mymachine"
@@ -120,16 +122,24 @@ func vs1053_test(led *Pin, codec vs1053.Device, sd sdcard.Device) (testError *Te
 	fmt.Printf("card mount ok\r\n")
 
 	var volumeAtt uint8 = 60
-	musicPlayer := vs1053.NewPlayer(&codec, filesystem)
+	musicPlayer := vs1053.NewPlayer(&codec)
 	musicPlayer.SetVolume(volumeAtt, volumeAtt)
 
-	// Play one file, don't return until complete
-	fmt.Printf("Playing track 001 (by Blocking)\r\n");
-	musicPlayer.PlayFullFile("/track001.mp3");
+	var f tinyfs.File
+	var ff *fatfs.File
 
-	// Play another file in the background
+	fmt.Printf("Playing track 001 (by Blocking)\r\n");
+	f, _ = filesystem.OpenFile("/track001.mp3", os.O_RDONLY)
+	ff, _ = f.(*fatfs.File)
+	// Play one file, don't return until complete
+	musicPlayer.PlayFullFile(ff);
+	ff.Close()
+
 	fmt.Printf("Playing track 002 (by Non-Blocking)\r\n");
-	musicPlayer.StartPlayingFile("/track002.mp3");
+	f, _ = filesystem.OpenFile("/track002.mp3", os.O_RDONLY)
+	ff, _ = f.(*fatfs.File)
+	// Play another file in the background
+	musicPlayer.StartPlayingFile(ff);
 
 	// file is playing in the background
 	for loop := 0; ; loop++ {
@@ -170,6 +180,8 @@ func vs1053_test(led *Pin, codec vs1053.Device, sd sdcard.Device) (testError *Te
 		}
 		time.Sleep(10 * time.Millisecond)
 	}
+
+	ff.Close()
 
 	return nil
 }

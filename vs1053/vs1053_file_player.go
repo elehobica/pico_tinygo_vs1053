@@ -32,18 +32,20 @@ package vs1053
 import (
     "fmt"
     "io"
-    "os"
     "time"
-    "strings"
-    "github.com/elehobica/pico_tinygo_vs1053/fatfs"
 )
+
+type File interface {
+    Tell() (ret int64, err error)
+    Seek(offset int64) error
+    Read(buf []byte) (n int, err error)
+}
 
 type Player struct {
     codec        *Device
-    fs           *fatfs.FATFS
     isPlaying    bool
     isPaused     bool
-    currentTrack *fatfs.File
+    currentTrack File
     mp3Buf       []byte
     mp3BufReq    chan struct{}
 }
@@ -53,11 +55,10 @@ const (
     REQ_CH_SZ    uint32 = 1  //!< Size of the request channel
 )
 
-func NewPlayer(codec *Device, fs *fatfs.FATFS) Player {
+func NewPlayer(codec *Device) Player {
     buff := make([]byte, DATA_BUF_LEN)
     return Player{
         codec:        codec,
-        fs:           fs,
         isPlaying:    false,
         isPaused:     false,
         currentTrack: nil,
@@ -66,8 +67,8 @@ func NewPlayer(codec *Device, fs *fatfs.FATFS) Player {
     }
 }
 
-func (p *Player) PlayFullFile(trackname string) error {
-    err := p.StartPlayingFile(trackname)
+func (p *Player) PlayFullFile(file File) error {
+    err := p.StartPlayingFile(file)
     if err != nil {
         return fmt.Errorf("StartPlayingFile failed")
     }
@@ -109,7 +110,7 @@ func (p *Player) SetVolume(left, right uint8) {
     p.codec.SetVolume(left, right)
 }
 
-func (p *Player) StartPlayingFile(file string) error {
+func (p *Player) StartPlayingFile(file File) error {
     // reset playback
     p.codec.sciWrite(REG_MODE, MODE_SM_LINE1 | MODE_SM_SDINEW | MODE_SM_LAYER12)
 
@@ -117,26 +118,15 @@ func (p *Player) StartPlayingFile(file string) error {
     p.codec.sciWrite(REG_WRAMADDR, 0x1e29)
     p.codec.sciWrite(REG_WRAM, 0)
 
-    f, err := p.fs.OpenFile(file, os.O_RDONLY)
-    if err != nil {
-        return fmt.Errorf("open error: %s", err.Error())
-    }
-
-    ff, ok := f.(*fatfs.File)
-    if ok != true {
-        return fmt.Errorf("conversion to *fatfs.File failed")
-    }
-    p.currentTrack = ff
+    p.currentTrack = file
 
     // We know we have a valid file. Check if .mp3
     // If so, check for ID3 tag and jump it if present.
-    if p.isMp3File(file) {
-        pos, err := p.mp3_ID3Jumper(p.currentTrack)
-        if err != nil {
-            return fmt.Errorf("mp3_ID3Jumper failed: %s", err.Error())
-        }
-        p.currentTrack.Seek(pos)
+    pos, err := p.mp3_ID3Jumper(p.currentTrack)
+    if err != nil {
+        return fmt.Errorf("mp3_ID3Jumper failed: %s", err.Error())
     }
+    p.currentTrack.Seek(pos)
 
     // As explained in datasheet, set twice 0 in REG_DECODETIME to set time back to 0
     p.codec.sciWrite(REG_DECODETIME, 0x00)
@@ -166,7 +156,6 @@ func (p *Player) StartPlayingFile(file string) error {
             if !more {
                 p.isPlaying = false
                 p.isPaused = false
-                p.currentTrack.Close()
                 p.codec.setDreqInterrupt(false, nil)
                 return
             }
@@ -177,12 +166,7 @@ func (p *Player) StartPlayingFile(file string) error {
     return nil
 }
 
-// Just checks to see if the name ends in ".mp3"
-func (p *Player) isMp3File(file string) bool {
-    return strings.HasSuffix(file, ".mp3")
-}
-
-func (p *Player) mp3_ID3Jumper(mp3 *fatfs.File) (start int64, err error) {
+func (p *Player) mp3_ID3Jumper(mp3 File) (start int64, err error) {
     start = 0
     if mp3 == nil {
         return 0, fmt.Errorf("nil file")
