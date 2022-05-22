@@ -4,8 +4,6 @@ import (
 	"fmt"
 	"machine"
 	"time"
-
-	"github.com/elehobica/pico_tinygo_vs1053/mymachine"
 )
 
 const (
@@ -33,8 +31,16 @@ var (
 	dummy [512]byte
 )
 
+type SPI interface {
+    Lock()
+    Unlock()
+    SetBaudRate(br uint32) error
+    Transfer(w byte) (byte, error)
+    Tx(w, r []byte) (err error)
+}
+
 type Device struct {
-	bus        mymachine.SPI
+	bus        SPI
 	cs         machine.Pin
 	cmdbuf     []byte
 	dummybuf   []byte
@@ -42,11 +48,9 @@ type Device struct {
 	sdCardType byte
 	CID        *CID
 	CSD        *CSD
-    slowBaud   *mymachine.SPIBaudRateReg
-    fastBaud   *mymachine.SPIBaudRateReg
 }
 
-func New(bus mymachine.SPI, cs machine.Pin) Device {
+func New(bus SPI, cs machine.Pin) Device {
 	return Device{
 		bus:        bus,
 		cs:         cs,
@@ -60,8 +64,6 @@ func New(bus mymachine.SPI, cs machine.Pin) Device {
 func (d *Device) Configure() error {
 	d.bus.Lock()
 	defer d.bus.Unlock()
-    d.slowBaud, _ = d.bus.SaveBaudRate(SlowFreq)
-    d.fastBaud, _ = d.bus.SaveBaudRate(FastFreq)
 	return d.initCard()
 }
 
@@ -70,7 +72,7 @@ func (d *Device) initCard() error {
 	d.cs.Configure(machine.PinConfig{Mode: machine.PinOutput})
 	d.cs.High()
 
-	d.bus.RestoreBaudRate(d.slowBaud)
+	d.bus.SetBaudRate(SlowFreq)
 
 	for i := range dummy {
 		dummy[i] = 0xFF
@@ -188,7 +190,7 @@ func (d *Device) initCard() error {
 
 	d.cs.High()
 
-	d.bus.RestoreBaudRate(d.fastBaud)
+	d.bus.SetBaudRate(FastFreq)
 
 	return nil
 }
@@ -459,7 +461,7 @@ func (d Device) writeData(block uint32, src []byte) error {
 func (d *Device) ReadAt(buf []byte, addr int64) (int, error) {
 	d.bus.Lock()
 	defer d.bus.Unlock()
-	d.bus.RestoreBaudRate(d.fastBaud)
+	d.bus.SetBaudRate(FastFreq)
 	block := uint64(addr)
 	// use address if not SDHC card
 	if d.sdCardType == SD_CARD_TYPE_SDHC {
@@ -530,7 +532,7 @@ func (d *Device) ReadAt(buf []byte, addr int64) (int, error) {
 func (d *Device) WriteAt(buf []byte, addr int64) (n int, err error) {
 	d.bus.Lock()
 	defer d.bus.Unlock()
-	d.bus.RestoreBaudRate(d.fastBaud)
+	d.bus.SetBaudRate(FastFreq)
 	block := uint64(addr)
 	// use address if not SDHC card
 	if d.sdCardType == SD_CARD_TYPE_SDHC {
@@ -626,7 +628,7 @@ func (d *Device) EraseBlockSize() int64 {
 func (d *Device) EraseBlocks(start, len int64) error {
 	d.bus.Lock()
 	defer d.bus.Unlock()
-	d.bus.RestoreBaudRate(d.fastBaud)
+	d.bus.SetBaudRate(FastFreq)
 	d.writeMultiStart(uint32(start))
 
 	for i := range d.dummybuf {

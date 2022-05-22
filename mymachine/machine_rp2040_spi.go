@@ -14,12 +14,13 @@ import (
 
 type SPI struct {
 	*machine.SPI
-	mu *sync.Mutex
+	mu  *sync.Mutex
+	brcm map[uint32]SPIBaudRateConfig
 }
 
-type SPIBaudRateReg struct {
-    SSPCPSR uint32
-    SSPCR0  uint32
+type SPIBaudRateConfig struct {
+    prescale uint32
+    postdiv  uint32
 }
 
 /*
@@ -70,6 +71,7 @@ func NewSPI(spi *machine.SPI) (SPI) {
 	return SPI{
 		spi,
 		&sync.Mutex{},
+		make(map[uint32]SPIBaudRateConfig),
 	}
 }
 
@@ -146,33 +148,48 @@ func (spi SPI) Transfer(w byte) (byte, error) {
 	}
 	return uint8(spi.Bus.SSPDR.Get()), nil
 }
+*/
 
 func (spi SPI) SetBaudRate(br uint32) error {
-	const freqin uint32 = 125 * MHz
-	const maxBaud uint32 = 66.5 * MHz // max output frequency is 66.5MHz on rp2040. see Note page 527.
-	// Find smallest prescale value which puts output frequency in range of
-	// post-divide. Prescale is an even number from 2 to 254 inclusive.
 	var prescale, postdiv uint32
-	for prescale = 2; prescale < 255; prescale += 2 {
-		if freqin < (prescale+2)*256*br {
-			break
+	brc, hasKey := spi.brcm[br]
+	if !hasKey {
+		// This takes time to calculate prescale and postdiv
+		const freqin uint32 = 125 * machine.MHz
+		const maxBaud uint32 = 66.5 * machine.MHz // max output frequency is 66.5MHz on rp2040. see Note page 527.
+		// Find smallest prescale value which puts output frequency in range of
+		// post-divide. Prescale is an even number from 2 to 254 inclusive.
+		for prescale = 2; prescale < 255; prescale += 2 {
+			if freqin < (prescale+2)*256*br {
+				break
+			}
 		}
-	}
-	if prescale > 254 || br > maxBaud {
-		return ErrSPIBaud
-	}
-	// Find largest post-divide which makes output <= baudrate. Post-divide is
-	// an integer in the range 1 to 256 inclusive.
-	for postdiv = 256; postdiv > 1; postdiv-- {
-		if freqin/(prescale*(postdiv-1)) > br {
-			break
+		if prescale > 254 || br > maxBaud {
+			return ErrSPIBaud
 		}
+		// Find largest post-divide which makes output <= baudrate. Post-divide is
+		// an integer in the range 1 to 256 inclusive.
+		for postdiv = 256; postdiv > 1; postdiv-- {
+			if freqin/(prescale*(postdiv-1)) > br {
+				break
+			}
+		}
+		// Register Key for speed-up at next time
+		spi.brcm[br] = SPIBaudRateConfig {
+			prescale,
+			postdiv,
+		}
+	} else {
+		// use calculated values
+		prescale = brc.prescale
+		postdiv  = brc.postdiv
 	}
 	spi.Bus.SSPCPSR.Set(prescale)
 	spi.Bus.SSPCR0.ReplaceBits((postdiv-1)<<rp.SPI0_SSPCR0_SCR_Pos, rp.SPI0_SSPCR0_SCR_Msk, 0)
 	return nil
 }
 
+/*
 func (spi SPI) GetBaudRate() uint32 {
 	const freqin uint32 = 125 * MHz
 	prescale := spi.Bus.SSPCPSR.Get()
@@ -428,25 +445,3 @@ func (spi SPI) txrx(tx, rx []byte) error {
 	return nil
 }
 */
-
-// Save BaudRate Register Setting for Restore() (Preserve current setting)
-func (spi SPI) SaveBaudRate(br uint32) (reg *SPIBaudRateReg, err error) {
-	defer spi.SetBaudRate(spi.GetBaudRate())
-    err = spi.SetBaudRate(br)
-	if err != nil {
-		return nil, err
-	}
-    cpsr := spi.Bus.SSPCPSR.Get()
-    cr0  := spi.Bus.SSPCR0.Get()
-    return &SPIBaudRateReg{
-        SSPCPSR: cpsr,
-        SSPCR0:  cr0,
-    }, nil
-}
-
-// Restore BaudRate Register Setting (because SetBaudRate() is too slow)
-func (spi SPI) RestoreBaudRate(reg *SPIBaudRateReg) (err error) {
-    spi.Bus.SSPCPSR.Set(reg.SSPCPSR)
-    spi.Bus.SSPCR0.Set(reg.SSPCR0)
-	return nil
-}

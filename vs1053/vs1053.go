@@ -33,17 +33,22 @@ import (
     "machine"
     "time"
     "fmt"
-    "github.com/elehobica/pico_tinygo_vs1053/mymachine"
 )
 
+type SPI interface {
+    Lock()
+    Unlock()
+    SetBaudRate(br uint32) error
+    Transfer(w byte) (byte, error)
+    Tx(w, r []byte) (err error)
+}
+
 type Device struct {
-    bus        mymachine.SPI
+    bus        SPI
     csPin      machine.Pin
     rstPin     machine.Pin
     dcsPin     machine.Pin
     dreqPin    machine.Pin
-    slowBaud   *mymachine.SPIBaudRateReg
-    fastBaud   *mymachine.SPIBaudRateReg
 }
 
 const (
@@ -51,15 +56,13 @@ const (
     FastFreq = 8000000 // below 12.288 MHz * 3.0 / 4 (for SCI Write and SDI Write)
 )
 
-func New(bus mymachine.SPI, csPin, rstPin, dcsPin, dreqPin machine.Pin) Device {
+func New(bus SPI, csPin, rstPin, dcsPin, dreqPin machine.Pin) Device {
     return Device{
         bus:        bus,
         csPin:      csPin,
         rstPin:     rstPin,
         dcsPin:     dcsPin,
         dreqPin:    dreqPin,
-        slowBaud:   nil,
-        fastBaud:   nil,
     }
 }
 
@@ -112,10 +115,6 @@ func (d *Device) begin() (version uint8) {
     d.dcsPin.High()
     d.dreqPin.Configure(machine.PinConfig{Mode: machine.PinInput})
 
-    // save SPI BaudRate for SCI and SDI
-    d.slowBaud, _ = d.bus.SaveBaudRate(SlowFreq)
-    d.fastBaud, _ = d.bus.SaveBaudRate(FastFreq)
-
     d.reset()
 
     status := uint8(d.sciRead(REG_STATUS))
@@ -146,7 +145,7 @@ func (d *Device) sciRead(addr uint8) (data uint16) {
     defer d.bus.Unlock()
     d.csPin.Low()
     defer d.csPin.High()
-    d.bus.RestoreBaudRate(d.slowBaud)
+    d.bus.SetBaudRate(SlowFreq)
     d.bus.Transfer(SCI_READ)
     d.bus.Transfer(addr)
     time.Sleep(10 * time.Microsecond)
@@ -161,7 +160,7 @@ func (d *Device) sciWrite(addr uint8, data uint16) {
     defer d.bus.Unlock()
     d.csPin.Low()
     defer d.csPin.High()
-    d.bus.RestoreBaudRate(d.fastBaud)
+    d.bus.SetBaudRate(FastFreq)
     d.bus.Transfer(SCI_WRITE)
     d.bus.Transfer(addr)
     d.bus.Transfer(uint8(data >> 8))
@@ -177,7 +176,7 @@ func (d *Device) playData(buf []byte) {
     defer d.bus.Unlock()
     d.dcsPin.Low()
     defer d.dcsPin.High()
-    d.bus.RestoreBaudRate(d.fastBaud)
+    d.bus.SetBaudRate(FastFreq)
     d.bus.Tx(buf, nil)
 }
 
