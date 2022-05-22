@@ -41,7 +41,8 @@ import (
 type Player struct {
     codec        *Device
     fs           *fatfs.FATFS
-    playingMusic bool
+    isPlaying    bool
+    isPaused     bool
     currentTrack *fatfs.File
     mp3Buf       []byte
     mp3BufReq    chan struct{}
@@ -57,7 +58,8 @@ func NewPlayer(codec *Device, fs *fatfs.FATFS) Player {
     return Player{
         codec:        codec,
         fs:           fs,
-        playingMusic: false,
+        isPlaying:    false,
+        isPaused:     false,
         currentTrack: nil,
         mp3Buf:       buff,
         mp3BufReq:    nil,
@@ -70,7 +72,7 @@ func (p *Player) PlayFullFile(trackname string) error {
         return fmt.Errorf("StartPlayingFile failed")
     }
 
-    for p.playingMusic {
+    for p.isPlaying && !p.isPaused {
         time.Sleep(10 * time.Millisecond) // give goroutine a chance to run
     }
 
@@ -88,19 +90,19 @@ func (p *Player) StopPlaying() error {
 }
 
 func (p *Player) PausePlaying(pause bool) error {
-    p.playingMusic = !pause && p.currentTrack != nil
-    if p.playingMusic {
+    p.isPaused = pause
+    if p.isPlaying && !p.isPaused {
         p.feedBuffer()
     }
     return nil
 }
 
 func (p *Player) Paused() bool {
-    return !p.playingMusic && p.currentTrack != nil
+    return p.isPlaying && p.isPaused
 }
 
 func (p *Player) Stopped() bool {
-    return !p.playingMusic && p.currentTrack == nil
+    return !p.isPlaying
 }
 
 func (p *Player) SetVolume(left, right uint8) {
@@ -140,13 +142,14 @@ func (p *Player) StartPlayingFile(file string) error {
     p.codec.sciWrite(REG_DECODETIME, 0x00)
     p.codec.sciWrite(REG_DECODETIME, 0x00)
 
-    p.playingMusic = true
+    p.isPlaying = true
+    p.isPaused = false
 
     // wait till its ready for data
     for !p.codec.readyForData() {}
 
     // fill it up!
-    for p.playingMusic && p.codec.readyForData() {
+    for p.isPlaying && !p.isPaused && p.codec.readyForData() {
         p.feedBuffer()
     }
 
@@ -161,9 +164,9 @@ func (p *Player) StartPlayingFile(file string) error {
         for {
             _, more := <-req
             if !more {
-                p.playingMusic = false
+                p.isPlaying = false
+                p.isPaused = false
                 p.currentTrack.Close()
-                p.currentTrack = nil
                 p.codec.setDreqInterrupt(false, nil)
                 return
             }
@@ -209,7 +212,7 @@ func (p *Player) mp3_ID3Jumper(mp3 *fatfs.File) (start int64, err error) {
 }
 
 func (p *Player) feedBuffer() {
-    if !p.playingMusic || p.currentTrack == nil || !p.codec.readyForData() {
+    if !p.isPlaying || p.isPaused || !p.codec.readyForData() {
        return // paused or stopped
     }
 
