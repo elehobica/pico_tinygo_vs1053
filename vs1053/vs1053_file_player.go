@@ -82,7 +82,8 @@ func (p *Player) PlayFullFile(file File) error {
 }
 
 func (p *Player) StopPlaying() error {
-    // cancel all playback
+    // stop DreqInterrupt and cancel all playback
+    p.codec.setDreqInterrupt(false, nil)
     p.codec.sciWrite(REG_MODE, MODE_SM_LINE1 | MODE_SM_SDINEW | MODE_SM_CANCEL)
 
     // wrap it up!
