@@ -8,14 +8,14 @@ import (
 )
 
 func init() {
-	spi      = machine.SPI1
-	sckPin   = machine.GPIO10
-	sdoPin   = machine.GPIO11
-	sdiPin   = machine.GPIO12
-	csSdPin  = machine.GPIO9
-	csVsPin  = machine.GPIO13
-	xrstPin  = machine.GPIO14
-	xdcsPin  = machine.GPIO15
+	spi      = machine.SPI0
+	sckPin   = machine.GPIO2
+	sdoPin   = machine.GPIO3
+	sdiPin   = machine.GPIO4
+	csSdPin  = machine.GPIO5
+	csVsPin  = machine.GPIO6
+	xrstPin  = machine.GPIO7
+	xdcsPin  = machine.GPIO17
 	xdreqPin = machine.GPIO16
 	ledPin   = machine.LED
 }

@@ -28,28 +28,28 @@ This project features:
 ### VS1053 board
 | Pico Pin # | Pin Name | Function | VS1053 board |
 ----|----|----|----
-| 14 | GP10 | SPI1_SCK | SCK |
-| 15 | GP11 | SPI1_TX | MOSI |
-| 16 | GP12 | SPI1_RX | MISO |
-| 17 | GP13 | SPI1_CSn | XCS |
-| 19 | GP14 | GPIO Output | XRST |
-| 20 | GP15 | GPIO Output | XDCS |
+|  4 | GP2 | SPI0_SCK | SCK |
+|  5 | GP3 | SPI0_TX | MOSI |
+|  6 | GP4 | SPI0_RX | MISO |
+|  8 | GND | GND | DGND |
+|  9 | GP6 | GPIO Output | XCS |
+| 10 | GP7 | GPIO Output | XRST |
 | 21 | GP16 | GPIO Input | DREQ |
-| 23 | GND | GND | DGND |
+| 22 | GP17 | GPIO Output | XDCS |
 | 40 | VBUS | 5V | 5V |
 
 ### microSD card
 | Pico Pin # | Pin Name | Function | microSD connector | microSD SPI board |
 ----|----|----|----|----
-| 12 | GP9 | SPI1_CSn | CD/DAT3 (2) | CS |
-| 13 | GND | GND | VSS (6) | GND |
-| 14 | GP10 | SPI1_SCK | CLK (5) | CLK |
-| 15 | GP11 | SPI1_TX | CMD (3) | MOSI |
-| 16 | GP12 | SPI1_RX | DAT0 (7) | MISO |
+|  4 | GP2 | SPI0_SCK | CLK (5) | CLK |
+|  5 | GP3 | SPI0_TX | CMD (3) | MOSI |
+|  6 | GP4 | SPI0_RX | DAT0 (7) | MISO |
+|  7 | GP5 | SPI0_CSn | CD/DAT3 (2) | CS |
+|  8 | GND | GND | VSS (6) | GND |
 | 36 | 3V3(OUT) | 3.3V | VDD (4) | 3V3 |
 
 #### Caution
-* SPI1_TX and SPI1_RX needs to be pull-ed up with 10Kohm.
+* SPI0_TX and SPI0_RX needs to be pull-ed up with 10Kohm.
 * Wire length between Pico and SD card is very sensitive. Short wiring as possible is desired, otherwise errors such as Mount error, Preallocation error and Write fail will occur.
 * SPI interface can be shared or serarated with VS1053
 
@@ -65,9 +65,9 @@ This project features:
 ```
 > wsl
 (in WSL2 shell)
-$ docker pull docker pull tinygo/tinygo
+$ docker pull tinygo/tinygo:0.22.0
 $ docker images
-$ docker run -it -v /mnt/d/somewhere/share:/share tinygo/tinygo:latest /bin/bash
+$ docker run -it -v /mnt/d/somewhere/share:/share tinygo/tinygo:0.22.0 /bin/bash
 (in docker container)
 # cd /share
 
@@ -85,7 +85,7 @@ $ docker run -it -v /mnt/d/somewhere/share:/share tinygo/tinygo:latest /bin/bash
 
 * TinyGo Build
 ```
-# tinygo build -target=pico -o pico_tinygo_vs1053.uf2
+# tinygo build -target=pico --serial uart -o pico_tinygo_vs1053.uf2
 
 (copy UF2 back to Windows local if working on docker native directory)
 (# cp pico_tinygo_vs1053.uf2 /share/pico_tinygo_vs1053/ )
