@@ -1,7 +1,7 @@
 # Raspberry Pi Pico TinyGo VS1053
 ## Overview
 This project is an example of VS1053 on Raspberry Pi Pico by TinyGo.
-* confirmed with TinyGo 0.25.0
+* confirmed with TinyGo 0.27.0
 
 This project features:
 * VS1053 MP3 playback
@@ -65,9 +65,9 @@ This project features:
 ```
 > wsl
 (in WSL2 shell)
-$ docker pull tinygo/tinygo:0.25.0
+$ docker pull tinygo/tinygo:0.27.0
 $ docker images
-$ docker run -it -v /mnt/d/somewhere/share:/share tinygo/tinygo:0.25.0 /bin/bash
+$ docker run -it -v /mnt/d/somewhere/share:/share tinygo/tinygo:0.27.0 /bin/bash
 (in docker container)
 # cd /share
 
@@ -85,7 +85,7 @@ $ docker run -it -v /mnt/d/somewhere/share:/share tinygo/tinygo:0.25.0 /bin/bash
 
 * TinyGo Build
 ```
-# tinygo build -target=pico --serial uart -opt 1 -o pico_tinygo_vs1053.uf2
+# tinygo build -target=pico --serial uart -o pico_tinygo_vs1053.uf2
 
 (copy UF2 back to Windows local if working on docker native directory)
 (# cp pico_tinygo_vs1053.uf2 /share/pico_tinygo_vs1053/ )
