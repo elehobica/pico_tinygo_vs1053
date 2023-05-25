@@ -14,7 +14,7 @@ This project features:
 * Raspberry Pi Pico
 * VS1053 Board (confirmed with LC Technology board)
 
-## Ciruit Diagram
+## Circuit Diagram
 ![Circuit Diagram](doc/Pico_VS1053_Schematic.png)
 
 ## Pin Assignment
