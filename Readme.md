@@ -6,7 +6,7 @@ This project is an example of VS1053 on Raspberry Pi Pico by TinyGo.
 This project features:
 * VS1053 MP3 playback
 * read MP3 bitstream by goroutine with Mutex for SPI, which allows to share single SPI for both VS1053 and SD card
-* Filesystem by FatFs R0.13c ([http://elm-chan.org/fsw/ff/00index_e.html](http://elm-chan.org/fsw/ff/00index_e.html))
+* Filesystem by FatFs R0.13c ([http://elm-chan.org/fsw/ff/](http://elm-chan.org/fsw/ff/))
   (SD card supports SD, SDHC, SDXC cards and FAT16, FAT32, exFAT formats)
 * machine optimization by CGO to improve SPI access performance
 
@@ -96,7 +96,7 @@ $ docker run -it -v /mnt/d/somewhere/share:/share tinygo/tinygo:0.27.0 /bin/bash
 Then, go back to Windows environment and put "pico_tinygo_vs1053.uf2" on RPI-RP2 drive
 
 ## Playback function
-* put "track001.mp3: abd "track002.mp3" on root directory of SD card
+* put "track001.mp3" and "track002.mp3" on root directory of SD card
 * no operability while playing "track001.mp3" because of blocking playback
 * while playing "track002.mp3", following commands through Serial are available
 
